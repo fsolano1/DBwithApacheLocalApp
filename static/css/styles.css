@@ -1,0 +1,15 @@
+/* Custom scrollbar for terminal and lists */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(11, 19, 38, 0.5);
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(134, 148, 138, 0.3);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(78, 222, 163, 0.5);
+}

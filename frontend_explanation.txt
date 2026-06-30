@@ -1,0 +1,43 @@
+HOW THE FRONTEND RUNS VIA API.PY
+=================================
+
+When you run the `api.py` script, the frontend runs because Flask acts as both the backend API server and the static file host. Here is how the process works:
+
+1. Local Web Server Initialization:
+   ---------------------------------
+   At the bottom of api.py, Flask starts a local development server on port 5000:
+   
+   if __name__ == '__main__':
+       app.run(host='0.0.0.0', debug=True, port=5000)
+
+2. Serving the HTML Entry Point:
+   -----------------------------
+   When you visit http://localhost:5000/ in a browser, Flask handles the root route ('/') and runs:
+   
+   @app.route('/')
+   def home():
+       return render_template('index.html', google_client_id=GOOGLE_CLIENT_ID)
+   
+   Flask's `render_template` function searches inside the `templates/` directory and returns the contents of `templates/index.html`.
+
+3. Serving Static Assets:
+   -----------------------
+   Inside templates/index.html, Flask's Jinja2 template engine resolves paths to the project's static assets:
+   
+   - Custom CSS: Loads static/css/styles.css using:
+     {{ url_for('static', filename='css/styles.css') }}
+   - Frontend JS: Loads static/js/app.js using:
+     {{ url_for('static', filename='js/app.js') }}
+     
+   Flask automatically serves any file requested from the `/static` path using the local `static/` directory in the workspace root.
+
+4. Client-Side Dependencies:
+   --------------------------
+   The browser fetches external dependencies directly from CDNs declared in templates/index.html:
+   - Tailwind CSS (via CDN script)
+   - Google Identity Services (for Native Google OAuth)
+   - Google Fonts & Material Icons (for UI typography and iconography)
+
+5. Frontend-Backend Communication:
+   --------------------------------
+   Once templates/index.html is rendered and static/js/app.js is executed, the browser-side JavaScript performs fetch calls directly to the API endpoints (like `/api/saludo`) exposed by api.py.

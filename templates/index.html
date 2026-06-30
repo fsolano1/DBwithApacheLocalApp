@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>API Engine - Dashboard</title>
+    <!-- Tailwind CSS CDN with forms & container queries plugins -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+    <!-- Google Identity Services script -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Custom Scrollbars -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "surface-container": "#171f33",
+                            "secondary-fixed": "#d8e2ff",
+                            "primary-fixed": "#6ffbbe",
+                            "tertiary-fixed": "#ffdad7",
+                            "error-container": "#93000a",
+                            "surface-tint": "#4edea3",
+                            "surface-variant": "#2d3449",
+                            "surface-container-highest": "#2d3449",
+                            "outline-variant": "#3c4a42",
+                            "primary-container": "#10b981",
+                            "on-surface": "#dae2fd",
+                            "primary-fixed-dim": "#4edea3",
+                            "error": "#ffb4ab",
+                            "on-tertiary-container": "#711419",
+                            "surface-bright": "#31394d",
+                            "on-background": "#dae2fd",
+                            "on-error-container": "#ffdad6",
+                            "background": "#0b1326",
+                            "secondary-container": "#0566d9",
+                            "on-secondary-container": "#e6ecff",
+                            "inverse-surface": "#dae2fd",
+                            "secondary": "#adc6ff",
+                            "on-secondary": "#002e6a",
+                            "surface-dim": "#0b1326",
+                            "on-primary": "#003824",
+                            "primary": "#4edea3",
+                            "secondary-fixed-dim": "#adc6ff",
+                            "outline": "#86948a",
+                            "on-tertiary-fixed-variant": "#842225",
+                            "surface": "#0b1326",
+                            "on-primary-fixed": "#002113",
+                            "surface-container-low": "#131b2e",
+                            "on-primary-container": "#00422b",
+                            "surface-container-lowest": "#060e20",
+                            "inverse-primary": "#006c49",
+                            "tertiary": "#ffb3af",
+                            "tertiary-fixed-dim": "#ffb3af",
+                            "tertiary-container": "#fc7c78",
+                            "on-secondary-fixed-variant": "#004395",
+                            "surface-container-high": "#222a3d",
+                            "on-primary-fixed-variant": "#005236",
+                            "on-secondary-fixed": "#001a42",
+                            "on-error": "#690005",
+                            "on-surface-variant": "#bbcabf",
+                            "inverse-on-surface": "#283044",
+                            "on-tertiary-fixed": "#410005",
+                            "on-tertiary": "#650911"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.125rem",
+                            "lg": "0.25rem",
+                            "xl": "0.5rem",
+                            "full": "0.75rem"
+                    },
+                    "spacing": {
+                            "stack-sm": "8px",
+                            "container-padding": "24px",
+                            "stack-md": "16px",
+                            "stack-lg": "32px",
+                            "unit": "4px",
+                            "gutter": "16px"
+                    },
+                    "fontFamily": {
+                            "headline-sm": ["Inter"],
+                            "display-lg": ["Inter"],
+                            "code-md": ["JetBrains Mono"],
+                            "body-md": ["Inter"],
+                            "body-lg": ["Inter"],
+                            "headline-md": ["Inter"],
+                            "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                            "headline-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                            "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                            "code-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                            "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                            "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                            "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen overflow-hidden flex">
+
+<!-- SESSION GATE (shown when not logged in) -->
+<div id="appLoginSessionGate" class="fixed inset-0 bg-background z-50 flex flex-col overflow-y-auto">
+    <!-- Landing Header -->
+    <header class="flex justify-between items-center px-8 py-4 border-b border-outline-variant/30 bg-surface-container-low z-10">
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[28px] animate-pulse">analytics</span>
+            <span class="font-headline-md text-headline-md font-bold text-primary tracking-tight">API Engine Portal</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-xs text-on-surface-variant hidden md:inline-block">v1.2.0 • Local Sentiment Suite</span>
+            <button onclick="handleSimulateLogin()" class="hidden bg-secondary-container/20 hover:bg-secondary-container/40 text-secondary border border-secondary/20 py-1.5 px-4 rounded text-xs font-semibold transition-all active:scale-95">
+                Quick Start
+            </button>
+        </div>
+    </header>
+
+    <!-- Welcome Hero Section -->
+    <div class="flex-grow max-w-7xl mx-auto w-full px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center z-10">
+        <div class="lg:col-span-7 space-y-6">
+            <span class="inline-block px-3 py-1 bg-primary/10 border border-primary/20 text-primary text-xs font-semibold rounded-full uppercase tracking-wider">
+                Hugging Face DistilBERT Integration
+            </span>
+            <h1 class="text-4xl md:text-5xl font-black text-on-surface tracking-tight leading-tight">
+                Welcome to API Engine: <br/>
+                <span class="text-primary">Local Sentiment Analysis & Validation Portal</span>
+            </h1>
+            <p class="text-on-surface-variant text-base leading-relaxed max-w-2xl">
+                API Engine connects directly to a local, pre-loaded machine learning model and benchmark validation datasets. This dashboard displays detailed inference performance and classification accuracy in real-time, completely offline.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 pt-2">
+                <!-- Native Google OAuth Element -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg p-5 flex flex-col gap-3 flex-1">
+                    <span class="text-[10px] font-label-caps text-on-surface-variant font-bold tracking-wider text-center">AUTHENTICATE WITH GOOGLE</span>
+                    <div id="g_id_onload"
+                        data-client_id="{{ google_client_id }}"
+                        data-context="signin"
+                        data-ux_mode="popup"
+                        data-callback="handleCredentialResponse"
+                        data-auto_prompt="false">
+                    </div>
+                    <div class="g_id_signin flex justify-center" 
+                        data-type="standard" 
+                        data-shape="pill" 
+                        data-theme="filled_blue" 
+                        data-text="signin_with" 
+                        data-size="large"
+                        data-logo_alignment="left">
+                    </div>
+                </div>
+
+                <!-- Simulation fallback -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg p-5 flex flex-col justify-between flex-1 hidden">
+                    <div class="space-y-1">
+                        <span class="text-[10px] font-label-caps text-on-surface-variant font-bold tracking-wider">DEVELOPER CONSOLE FALLBACK</span>
+                        <p class="text-xs text-on-surface-variant">Bypass external authorization and run locally using developer simulated claims.</p>
+                    </div>
+                    <button id="simulateLoginBtn" class="w-full flex items-center justify-center gap-2 bg-secondary-container/20 hover:bg-secondary-container/40 text-secondary border border-secondary/20 py-2.5 px-4 rounded font-semibold text-xs transition-all duration-200 active:scale-95 mt-4">
+                        <span class="material-symbols-outlined text-[16px]">terminal</span>
+                        <span>Simulate Developer Login</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: API Code Window Preview -->
+        <div class="lg:col-span-5 bg-surface-container border border-outline-variant rounded-xl p-6 shadow-2xl relative overflow-hidden group">
+            <div class="absolute -right-24 -top-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/15 transition-all"></div>
+            <div class="flex justify-between items-center border-b border-outline-variant/30 pb-3 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-error"></span>
+                    <span class="w-3 h-3 rounded-full bg-secondary"></span>
+                    <span class="w-3 h-3 rounded-full bg-primary"></span>
+                </div>
+                <span class="text-xs text-on-surface-variant font-mono">api_endpoint.py</span>
+            </div>
+            <pre class="font-code-md text-code-md text-xs text-on-surface overflow-x-auto select-all"><code class="language-python"><span class="text-secondary">import</span> requests
+
+url = <span class="text-primary">"http://localhost:5000/api/predict"</span>
+headers = {
+    <span class="text-primary">"Authorization"</span>: <span class="text-primary">"Bearer YOUR_JWT"</span>
+}
+
+<span class="text-on-surface-variant"># Run offline inference</span>
+data = { <span class="text-primary">"text"</span>: <span class="text-primary">"HuggingFace local inference is fast!"</span> }
+resp = requests.post(url, json=data, headers=headers)
+
+print(resp.json())
+<span class="text-on-surface-variant"># Output: {"sentiment": "POSITIVE", "confidence": 0.9997}</span></code></pre>
+        </div>
+    </div>
+
+    <!-- Capabilities Details -->
+    <section class="max-w-7xl mx-auto w-full px-6 py-12 border-t border-outline-variant/30 z-10 bg-background/50">
+        <h2 class="text-center font-headline-md text-headline-md text-on-surface mb-8 font-bold">What the Sentiment API Can Do</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="bg-surface-container/40 border border-outline-variant/30 rounded-lg p-5 space-y-3">
+                <span class="material-symbols-outlined text-primary text-[32px]">psychology</span>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Local AI Sentiment</h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Uses preloaded <code class="bg-surface-variant px-1 rounded text-primary">DistilBERT</code>. Provides instant classifications without sending your text data to external clouds.
+                </p>
+            </div>
+            <div class="bg-surface-container/40 border border-outline-variant/30 rounded-lg p-5 space-y-3">
+                <span class="material-symbols-outlined text-primary text-[32px]">analytics</span>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Model Validation Dashboard</h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Test classification accuracy against the Kaggle Twitter validation benchmark. Perform full CRUD operations directly in-memory.
+                </p>
+            </div>
+            <div class="bg-surface-container/40 border border-outline-variant/30 rounded-lg p-5 space-y-3">
+                <span class="material-symbols-outlined text-primary text-[32px]">vpn_key</span>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">API Credentials Manager</h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Generate developer-specific custom API keys and JWT authentication tokens. Easily revoke active keys to secure endpoints.
+                </p>
+            </div>
+            <div class="bg-surface-container/40 border border-outline-variant/30 rounded-lg p-5 space-y-3">
+                <span class="material-symbols-outlined text-primary text-[32px]">speed</span>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Performance Telemetry</h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Monitor latency, model prediction scores, and classification correctness timelines. Instantly inspect metrics in real-time.
+                </p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Main Application Layout Container -->
+<div id="appLayoutContainer" class="h-full w-full flex overflow-hidden hidden">
+
+<!-- Mobile Sidebar Drawer Overlay -->
+<div id="mobileDrawerOverlay" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 hidden md:hidden transition-opacity duration-300"></div>
+
+<!-- Mobile Sidebar Drawer Container -->
+<aside id="mobileSidebar" class="fixed top-0 left-0 h-full w-[280px] bg-surface-container-low border-r border-outline-variant z-40 transform -translate-x-full md:hidden transition-transform duration-300 flex flex-col py-stack-lg">
+    <div class="px-container-padding mb-stack-lg flex justify-between items-center">
+        <div>
+            <h1 class="font-headline-md text-headline-md font-bold text-primary">API Engine</h1>
+            <p class="text-on-surface-variant text-xs mt-1">Active Projects: <span class="sidebar-projects-count font-bold text-primary font-mono">1</span></p>
+        </div>
+        <button id="closeMobileSidebarBtn" class="text-on-surface-variant hover:text-primary transition-colors p-1 rounded hover:bg-surface-variant/30">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div class="px-4 mb-stack-md">
+        <button onclick="handleNewProjectClick()" class="w-full bg-primary-container hover:bg-primary-fixed text-on-primary-container font-headline-sm text-headline-sm py-2 px-4 rounded transition-colors duration-200 active:scale-95 transition-transform flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+            New Project
+        </button>
+    </div>
+    <ul class="flex-1 space-y-1">
+        <li>
+            <a data-tab="dashboard" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 border-l-2 border-primary bg-primary/10 text-primary font-bold hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+        </li>
+        <li>
+            <a data-tab="sentiment" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">analytics</span>
+                Model Validation
+            </a>
+        </li>
+        <li>
+            <a data-tab="keys" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">vpn_key</span>
+                API Keys
+            </a>
+        </li>
+        <li>
+            <a data-tab="docs" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">description</span>
+                Documentation
+            </a>
+        </li>
+        <li>
+            <a data-tab="logs" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">monitoring</span>
+                Logs
+            </a>
+        </li>
+        <li>
+            <a data-tab="metadata" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">fingerprint</span>
+                Session Metadata
+            </a>
+        </li>
+    </ul>
+    <ul class="mt-auto space-y-1 pt-stack-md border-t border-outline-variant/30">
+        <li>
+            <a data-tab="settings" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+        </li>
+        <li>
+            <a data-tab="support" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">help</span>
+                Support
+            </a>
+        </li>
+    </ul>
+</aside>
+
+<!-- Desktop SideNavBar -->
+<nav class="hidden md:flex flex-col h-full py-stack-lg bg-surface-container-low dark:bg-surface-container-lowest fixed h-screen w-[280px] left-0 top-0 border-r border-outline-variant z-20">
+    <div class="px-container-padding mb-stack-lg">
+        <h1 class="font-headline-md text-headline-md font-bold text-primary">API Engine</h1>
+        <p class="text-on-surface-variant text-xs mt-1">Active Projects: <span class="sidebar-projects-count font-bold text-primary font-mono">1</span></p>
+    </div>
+    <div class="px-4 mb-stack-md">
+        <button onclick="handleNewProjectClick()" class="w-full bg-primary-container hover:bg-primary-fixed text-on-primary-container font-headline-sm text-headline-sm py-2 px-4 rounded transition-colors duration-200 active:scale-95 transition-transform flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+            New Project
+        </button>
+    </div>
+    <ul class="flex-1 space-y-1">
+        <li>
+            <a data-tab="dashboard" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 border-l-2 border-primary bg-primary/10 text-primary font-bold hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+        </li>
+        <li>
+            <a data-tab="sentiment" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">analytics</span>
+                Model Validation
+            </a>
+        </li>
+        <li>
+            <a data-tab="keys" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">vpn_key</span>
+                API Keys
+            </a>
+        </li>
+        <li>
+            <a data-tab="docs" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">description</span>
+                Documentation
+            </a>
+        </li>
+        <li>
+            <a data-tab="logs" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">monitoring</span>
+                Logs
+            </a>
+        </li>
+        <li>
+            <a data-tab="metadata" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">fingerprint</span>
+                Session Metadata
+            </a>
+        </li>
+    </ul>
+    <ul class="mt-auto space-y-1 pt-stack-md border-t border-outline-variant/30">
+        <li>
+            <a data-tab="settings" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+        </li>
+        <li>
+            <a data-tab="support" class="sidebar-tab-btn flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-all active:scale-95" href="#">
+                <span class="material-symbols-outlined">help</span>
+                Support
+            </a>
+        </li>
+    </ul>
+</nav>
+
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-container-padding w-full bg-surface dark:bg-surface-dim fixed top-0 right-0 md:w-[calc(100%-280px)] h-16 border-b border-outline-variant z-10">
+    <div class="flex items-center gap-3 flex-1">
+        <!-- Mobile Sidebar Toggle -->
+        <button id="openMobileSidebarBtn" class="md:hidden text-on-surface-variant hover:text-primary transition-colors p-2 rounded hover:bg-surface-variant/30">
+            <span class="material-symbols-outlined">menu</span>
+        </button>
+        <div class="relative w-48 sm:w-64 focus-within:ring-2 focus-within:ring-primary rounded">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+            <input id="globalSearchInput" class="w-full bg-surface-container-low border border-outline-variant rounded py-1.5 pl-10 pr-3 text-on-surface focus:outline-none focus:border-primary font-body-md text-body-md placeholder:text-on-surface-variant/50 transition-colors" placeholder="Search resources..." type="text"/>
+        </div>
+    </div>
+    <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Dashboard Click Counter Badge (Global Clicks Indicator) -->
+        <div class="hidden sm:flex items-center gap-1.5 bg-surface-container border border-outline-variant rounded px-2.5 py-1 text-xs text-on-surface-variant">
+            <span class="material-symbols-outlined text-primary text-[14px]">touch_app</span>
+            Clicks: <span class="auth-click-count-display font-semibold text-primary">0</span>
+        </div>
+        <button onclick="handleConsoleBtnClick('Notifications')" class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded hover:bg-surface-variant/30">
+            <span class="material-symbols-outlined">notifications</span>
+        </button>
+        <button onclick="handleConsoleBtnClick('Terminal Console')" class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded hover:bg-surface-variant/30">
+            <span class="material-symbols-outlined">terminal</span>
+        </button>
+        
+        <!-- Authentication Block in Header -->
+        <div class="ml-2 flex items-center">
+            <!-- Unauthenticated State -->
+            <button id="headerLoginBtn" class="flex items-center gap-1.5 bg-primary-container hover:bg-primary-fixed text-on-primary-container px-3 py-1.5 rounded transition-colors text-xs font-semibold active:scale-95 duration-200">
+                <span class="material-symbols-outlined text-[16px]">login</span>
+                <span>Log In</span>
+            </button>
+            
+            <!-- Authenticated State -->
+            <div id="headerProfileContainer" class="hidden relative">
+                <div id="profileAvatarBtn" class="h-9 w-9 rounded-full bg-surface-variant border-2 border-primary overflow-hidden cursor-pointer hover:scale-105 active:scale-95 transition-all">
+                    <img id="userHeaderAvatar" alt="User Profile" class="w-full h-full object-cover" src=""/>
+                </div>
+                
+                <!-- Dropdown Menu -->
+                <div id="profileDropdown" class="hidden absolute right-0 top-12 w-64 bg-surface-container-high border border-outline-variant rounded-lg p-4 shadow-xl z-50 flex flex-col gap-3">
+                    <div class="flex items-center gap-3 pb-3 border-b border-outline-variant/30">
+                        <img id="dropdownAvatar" class="w-10 h-10 rounded-full border border-primary" src="" alt="Avatar"/>
+                        <div class="flex flex-col min-w-0">
+                            <span id="dropdownName" class="text-on-surface font-semibold text-sm truncate">...</span>
+                            <span id="dropdownEmail" class="text-on-surface-variant text-xs truncate">...</span>
+                        </div>
+                    </div>
+                    <div class="text-xs text-on-surface-variant flex flex-col gap-1.5 bg-surface-container-low p-2 rounded border border-outline-variant/20">
+                        <div class="flex justify-between">
+                            <span>Profile Actions Count:</span>
+                            <span class="auth-click-count-display font-bold text-primary">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>API Call Clicks:</span>
+                            <span class="api-call-count-display font-bold text-secondary">0</span>
+                        </div>
+                    </div>
+                    <button id="dropdownViewMetaBtn" class="w-full py-1.5 px-3 bg-surface-variant hover:bg-surface-variant/80 text-on-surface text-xs font-semibold rounded transition-colors">
+                        View Session Metadata
+                    </button>
+                    <button id="dropdownLogoutBtn" class="w-full py-1.5 px-3 bg-error-container/20 hover:bg-error-container/40 text-error border border-error/20 text-xs font-semibold rounded transition-colors">
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Main Content -->
+<main class="md:ml-[280px] pt-16 w-full h-full overflow-y-auto bg-background p-container-padding z-0">
+    <div class="max-w-[1440px] mx-auto">
+        
+        <!-- SECTION 1: DASHBOARD -->
+        <section id="section-dashboard" class="block space-y-stack-lg">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="font-display-lg text-display-lg text-on-surface">Overview</h2>
+                    <p class="text-on-surface-variant mt-1">Real-time metrics for local sentiment API</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="flex items-center gap-1.5 text-xs font-label-caps text-label-caps text-on-surface-variant px-3 py-1 border border-outline-variant rounded bg-surface-container-low">
+                        <span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+                        LOCAL ENGINE
+                    </span>
+                    <select id="chartTimeRange" class="bg-surface-container border border-outline-variant text-on-surface font-body-md text-body-md rounded px-3 py-1 focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer">
+                        <option value="10">Last 10 Records</option>
+                        <option value="20">Last 20 Records</option>
+                        <option value="all">All Validation Dataset</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Metrics Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+                <!-- Card 1 -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-label-caps text-label-caps text-on-surface-variant">TOTAL API REQUESTS</span>
+                        <span class="material-symbols-outlined text-primary-container text-opacity-50">data_usage</span>
+                    </div>
+                    <div id="statTotalRequests" class="font-display-lg text-display-lg text-on-surface transition-all duration-300">--</div>
+                    <div class="flex items-center gap-1 mt-auto pt-4 text-xs">
+                        <span class="text-primary flex items-center font-semibold"><span class="material-symbols-outlined text-[14px]">sync</span> Live</span>
+                        <span class="text-on-surface-variant ml-1">session queries & db records</span>
+                    </div>
+                    <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-primary-container/5 rounded-full blur-2xl group-hover:bg-primary-container/10 transition-all"></div>
+                </div>
+                <!-- Card 2 -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-label-caps text-label-caps text-on-surface-variant">AVG MODEL LATENCY</span>
+                        <span class="material-symbols-outlined text-secondary text-opacity-50">speed</span>
+                    </div>
+                    <div class="font-display-lg text-display-lg text-on-surface">
+                        <span id="statAvgLatency">--</span><span class="text-headline-sm font-headline-sm text-on-surface-variant ml-1">ms</span>
+                    </div>
+                    <div class="flex items-center gap-1 mt-auto pt-4 text-xs">
+                        <span class="text-primary flex items-center font-semibold"><span class="material-symbols-outlined text-[14px]">bolt</span> Real-time</span>
+                        <span class="text-on-surface-variant ml-1">mean local inference time</span>
+                    </div>
+                    <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-secondary/5 rounded-full blur-2xl group-hover:bg-secondary/10 transition-all"></div>
+                </div>
+                <!-- Card 3 -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-label-caps text-label-caps text-on-surface-variant">MODEL ALIGNMENT ACCURACY</span>
+                        <span class="material-symbols-outlined text-primary text-opacity-50">verified</span>
+                    </div>
+                    <div id="statModelAccuracy" class="font-display-lg text-display-lg text-primary">--%</div>
+                    <div class="flex items-center gap-1 mt-auto pt-4 text-xs">
+                        <span class="text-primary flex items-center font-semibold"><span class="material-symbols-outlined text-[14px]">done_all</span> Measured</span>
+                        <span class="text-on-surface-variant ml-1">vs Twitter validation labels</span>
+                    </div>
+                    <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all"></div>
+                </div>
+            </div>
+            
+            <!-- Main Chart Area -->
+            <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface">Inference Latency & Confidence Timeline</h3>
+                    <div class="flex gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-1 bg-primary rounded-full"></span>
+                            <span class="font-label-caps text-label-caps text-on-surface-variant">Latency (ms)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-1 bg-secondary rounded-full"></span>
+                            <span class="font-label-caps text-label-caps text-on-surface-variant">Confidence (%)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Premium SVG Interactive Chart Container -->
+                <div id="chartContainer" class="h-64 w-full relative pb-2 pl-2">
+                    <!-- Loaded dynamically via JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Bottom Row: Clusters & Recent Alerts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+                <!-- Cluster Status -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg flex flex-col">
+                    <div class="p-4 border-b border-outline-variant flex justify-between items-center">
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Cluster Status</h3>
+                        <button onclick="handleViewMapClick()" class="text-xs text-primary hover:underline">View Map</button>
+                    </div>
+                    <div class="p-0 overflow-x-auto">
+                        <table id="clusterTable" class="w-full text-left border-collapse min-w-[400px]">
+                            <thead>
+                                <tr class="bg-surface-container-low border-b border-outline-variant">
+                                    <th class="py-2 px-4 font-label-caps text-label-caps text-on-surface-variant">ENVIRONMENT</th>
+                                    <th class="py-2 px-4 font-label-caps text-label-caps text-on-surface-variant">REGION</th>
+                                    <th class="py-2 px-4 font-label-caps text-label-caps text-on-surface-variant">STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody class="font-code-md text-code-md">
+                                <tr class="border-b border-outline-variant/30 hover:bg-surface-variant/20 transition-colors">
+                                    <td class="py-3 px-4 text-on-surface flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary text-[18px]">cloud_done</span>
+                                        Production
+                                    </td>
+                                    <td class="py-3 px-4 text-on-surface-variant">us-east-1</td>
+                                    <td class="py-3 px-4"><span class="text-primary bg-primary/10 px-2 py-0.5 rounded text-xs border border-primary/20">Healthy</span></td>
+                                </tr>
+                                <tr class="border-b border-outline-variant/30 hover:bg-surface-variant/20 transition-colors">
+                                    <td class="py-3 px-4 text-on-surface flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary text-[18px]">cloud_done</span>
+                                        Production
+                                    </td>
+                                    <td class="py-3 px-4 text-on-surface-variant">eu-west-1</td>
+                                    <td class="py-3 px-4"><span class="text-primary bg-primary/10 px-2 py-0.5 rounded text-xs border border-primary/20">Healthy</span></td>
+                                </tr>
+                                <tr class="hover:bg-surface-variant/20 transition-colors">
+                                    <td class="py-3 px-4 text-on-surface flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-secondary text-[18px]">cloud_sync</span>
+                                        Staging
+                                    </td>
+                                    <td class="py-3 px-4 text-on-surface-variant">us-east-1</td>
+                                    <td class="py-3 px-4"><span class="text-secondary bg-secondary/10 px-2 py-0.5 rounded text-xs border border-secondary/20">Deploying</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Recent Alerts -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg flex flex-col">
+                    <div class="p-4 border-b border-outline-variant flex justify-between items-center">
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Recent Alerts</h3>
+                        <span id="alertsBadgeCount" class="bg-surface-variant text-on-surface text-xs px-2 py-1 rounded">2 Unresolved</span>
+                    </div>
+                    <div class="p-4 space-y-3 flex-1 overflow-y-auto max-h-[200px]">
+                        <div class="flex gap-3 p-3 rounded border border-error/20 bg-error/5">
+                            <span class="material-symbols-outlined text-error mt-0.5 text-[20px]">warning</span>
+                            <div>
+                                <div class="font-body-md text-body-md text-on-surface font-semibold">High Latency Spike Detected</div>
+                                <div class="text-sm text-on-surface-variant mt-0.5">Endpoint <code class="bg-surface-variant px-1 rounded text-error">/api/v2/users</code> exceeded 500ms threshold.</div>
+                                <div class="text-xs text-on-surface-variant mt-2 flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">schedule</span> 10 mins ago
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 p-3 rounded border border-outline-variant hover:bg-surface-variant/10 transition-colors">
+                            <span class="material-symbols-outlined text-secondary mt-0.5 text-[20px]">info</span>
+                            <div>
+                                <div class="font-body-md text-body-md text-on-surface">SSL Certificate Auto-Renewed</div>
+                                <div class="text-sm text-on-surface-variant mt-0.5">Wildcard cert for *.apiengine.io successfully renewed.</div>
+                                <div class="text-xs text-on-surface-variant mt-2 flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">schedule</span> 2 hours ago
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- SECTION: MODEL VALIDATION -->
+        <section id="section-sentiment" class="hidden space-y-stack-lg">
+            <!-- Locked View (shown when not logged in) -->
+            <div id="sentimentLockedView" class="bg-surface-container border border-outline-variant rounded-lg p-12 flex flex-col items-center justify-center text-center space-y-4 max-w-xl mx-auto mt-12">
+                <span class="material-symbols-outlined text-[72px] text-error animate-pulse">lock</span>
+                <h3 class="font-headline-md text-headline-md font-bold text-on-surface">Authentication Required</h3>
+                <p class="text-on-surface-variant text-sm leading-relaxed">
+                    Access to the local machine-learning model validation database and CRUD operations is restricted. Please sign in using Google OAuth or Developer Simulation at the top right to continue.
+                </p>
+                <button onclick="openLoginModal()" class="py-2.5 px-6 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-semibold rounded transition-all active:scale-95 duration-200 flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">login</span>
+                    <span>Authenticate Now</span>
+                </button>
+            </div>
+
+            <!-- Dashboard View (shown when logged in) -->
+            <div id="sentimentDashboardView" class="hidden space-y-stack-lg">
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h2 class="font-display-lg text-display-lg text-on-surface">Model Validation Dashboard</h2>
+                        <p class="text-on-surface-variant mt-1">Validate sentiment predictions against the Twitter Validation Dataset.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-1.5 bg-surface-container-low border border-outline-variant rounded px-2.5 py-1 text-xs">
+                            <span class="text-on-surface-variant font-label-caps font-bold">Dataset Limit:</span>
+                            <select id="validationLimitSelect" class="bg-surface-container border-none text-on-surface text-xs rounded py-0.5 px-2 focus:ring-1 focus:ring-primary outline-none cursor-pointer">
+                                <option value="20" selected>20 Records</option>
+                                <option value="30">30 Records</option>
+                                <option value="50">50 Records</option>
+                                <option value="100">100 Records</option>
+                                <option value="all">Entire DB</option>
+                            </select>
+                        </div>
+                        <span class="flex items-center gap-1.5 text-xs font-label-caps text-label-caps text-on-surface-variant px-3 py-1.5 border border-outline-variant rounded bg-surface-container-low">
+                            <span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+                            LOCAL INFERENCE ACTIVE
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Metrics Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-gutter">
+                    <!-- Accuracy -->
+                    <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col relative overflow-hidden group">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-label-caps text-label-caps text-on-surface-variant">ALIGNMENT ACCURACY</span>
+                            <span class="material-symbols-outlined text-primary text-opacity-50">verified</span>
+                        </div>
+                        <div id="valAccuracy" class="font-display-lg text-display-lg text-primary">--%</div>
+                        <div class="flex items-center gap-1 mt-auto pt-4 text-xs">
+                            <span class="text-on-surface-variant">Compared to dataset sentiment</span>
+                        </div>
+                        <div class="absolute -right-10 -bottom-10 w-24 h-24 bg-primary-container/5 rounded-full blur-2xl group-hover:bg-primary-container/10 transition-all"></div>
+                    </div>
+                    <!-- Samples -->
+                    <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col relative overflow-hidden group">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-label-caps text-label-caps text-on-surface-variant">SAMPLES EVALUATED</span>
+                            <span class="material-symbols-outlined text-secondary text-opacity-50">folder_open</span>
+                        </div>
+                        <div id="valTotalSamples" class="font-display-lg text-display-lg text-on-surface">--</div>
+                        <div class="flex items-center gap-1 mt-auto pt-4 text-xs">
+                            <span class="text-on-surface-variant">In-memory validation database</span>
+                        </div>
+                        <div class="absolute -right-10 -bottom-10 w-24 h-24 bg-secondary/5 rounded-full blur-2xl group-hover:bg-secondary/10 transition-all"></div>
+                    </div>
+                    <!-- Avg Confidence -->
+                    <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col relative overflow-hidden group">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-label-caps text-label-caps text-on-surface-variant">AVG CONFIDENCE</span>
+                            <span class="material-symbols-outlined text-tertiary text-opacity-50">analytics</span>
+                        </div>
+                        <div id="valAvgConfidence" class="font-display-lg text-display-lg text-tertiary">--%</div>
+                        <div class="flex items-center gap-1 mt-auto pt-4 text-xs">
+                            <span class="text-on-surface-variant">Mean prediction score</span>
+                        </div>
+                        <div class="absolute -right-10 -bottom-10 w-24 h-24 bg-tertiary/5 rounded-full blur-2xl group-hover:bg-tertiary/10 transition-all"></div>
+                    </div>
+                    <!-- Avg Latency -->
+                    <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col relative overflow-hidden group">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-label-caps text-label-caps text-on-surface-variant">AVG LATENCY</span>
+                            <span class="material-symbols-outlined text-secondary text-opacity-50">speed</span>
+                        </div>
+                        <div class="font-display-lg text-display-lg text-on-surface">
+                            <span id="valAvgLatency">--</span><span class="text-headline-sm font-headline-sm text-on-surface-variant ml-1">ms</span>
+                        </div>
+                        <div class="flex items-center gap-1 mt-auto pt-4 text-xs">
+                            <span class="text-on-surface-variant">Average CPU execution time</span>
+                        </div>
+                        <div class="absolute -right-10 -bottom-10 w-24 h-24 bg-secondary/5 rounded-full blur-2xl group-hover:bg-secondary/10 transition-all"></div>
+                    </div>
+                </div>
+                
+                <!-- Tabs & Database Actions Row -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="bg-surface-container border border-outline-variant rounded-lg p-1.5 flex gap-2 w-fit">
+                        <button id="val-tab-btn-interactive" onclick="switchValTab('interactive')" class="val-tab-btn px-4 py-2 rounded font-semibold text-xs transition-all bg-primary/20 text-primary active:scale-95 duration-150">
+                            Interactive Predictor
+                        </button>
+                        <button id="val-tab-btn-table" onclick="switchValTab('table')" class="val-tab-btn px-4 py-2 rounded font-semibold text-xs transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 active:scale-95 duration-150">
+                            Dataset Viewer
+                        </button>
+                        <button id="val-tab-btn-charts" onclick="switchValTab('charts')" class="val-tab-btn px-4 py-2 rounded font-semibold text-xs transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 active:scale-95 duration-150">
+                            Distribution Charts
+                        </button>
+                        <button id="val-tab-btn-insights" onclick="switchValTab('insights')" class="val-tab-btn px-4 py-2 rounded font-semibold text-xs transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 active:scale-95 duration-150">
+                            Analytical Insights
+                        </button>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button id="addSampleBtn" onclick="openAddSampleModal()" class="py-2 px-4 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-semibold rounded text-xs transition-all active:scale-95 flex items-center gap-1.5 shadow-md">
+                            <span class="material-symbols-outlined text-[16px]">add_circle</span>
+                            Add Tweet
+                        </button>
+                        <button id="reRunInferenceBtn" onclick="triggerReRunInference()" class="py-2 px-4 bg-secondary-container hover:bg-secondary text-on-secondary-container hover:text-on-secondary font-semibold rounded text-xs transition-all active:scale-95 flex items-center gap-1.5 shadow-md">
+                            <span class="material-symbols-outlined text-[16px]">sync</span>
+                            Re-run Inference
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tab Contents -->
+                <div class="grid grid-cols-1 gap-gutter">
+                    <!-- 1. Interactive Predictor -->
+                    <div id="val-content-interactive" class="val-tab-content bg-surface-container border border-outline-variant rounded-lg p-stack-md space-y-6">
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Test Local Classifier</h3>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+                            <div class="space-y-4">
+                                <label class="block text-xs font-label-caps text-on-surface-variant">INPUT TWEET TEXT</label>
+                                <textarea id="interactiveTweetInput" rows="4" placeholder="Enter tweet or review here to test the DistilBERT model..." class="w-full bg-surface-container-low border border-outline-variant rounded py-2.5 px-3 text-on-surface focus:outline-none focus:border-primary font-body-md"></textarea>
+                                <button id="interactivePredictBtn" class="w-full py-2.5 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-semibold rounded transition-all active:scale-95 duration-200 flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">psychology</span>
+                                    <span>Run Sentiment Prediction</span>
+                                </button>
+                            </div>
+                            <div class="border border-outline-variant/30 rounded-lg p-4 bg-surface-container-low flex flex-col justify-center min-h-[160px]">
+                                <div id="interactivePlaceholder" class="text-center text-on-surface-variant italic space-y-2">
+                                    <span class="material-symbols-outlined text-[36px] text-on-surface-variant/40">online_prediction</span>
+                                    <p class="text-xs">Results will be rendered here after analysis.</p>
+                                </div>
+                                <div id="interactiveResultCard" class="hidden space-y-4">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs font-label-caps text-on-surface-variant">PREDICTED SENTIMENT</span>
+                                        <span id="interactiveResultPill" class="px-2.5 py-1 rounded text-xs font-bold border">--</span>
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <div class="flex justify-between text-xs">
+                                            <span class="text-on-surface-variant">Model Confidence Score:</span>
+                                            <span id="interactiveResultScore" class="font-semibold text-on-surface">--</span>
+                                        </div>
+                                        <div class="w-full bg-surface-container-high rounded-full h-2 overflow-hidden">
+                                            <div id="interactiveResultBar" class="bg-primary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between text-xs pt-2 border-t border-outline-variant/30">
+                                        <span class="text-on-surface-variant">Inference Latency:</span>
+                                        <span id="interactiveResultLatency" class="font-mono text-secondary">-- ms</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 2. Dataset Viewer Table -->
+                    <div id="val-content-table" class="val-tab-content hidden bg-surface-container border border-outline-variant rounded-lg p-stack-md space-y-4">
+                        <div class="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Dataset Sample Log</h3>
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <input id="valTableSearch" type="text" placeholder="Search tweets..." class="bg-surface-container-low border border-outline-variant text-on-surface font-body-md text-xs rounded px-3 py-1.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none flex-1 sm:w-48"/>
+                                <select id="valTableFilter" class="bg-surface-container-low border border-outline-variant text-on-surface font-body-md text-xs rounded px-3 py-1.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer">
+                                    <option value="all">All Sentiments</option>
+                                    <option value="Positive">Original: Positive</option>
+                                    <option value="Negative">Original: Negative</option>
+                                    <option value="Neutral">Original: Neutral</option>
+                                    <option value="Irrelevant">Original: Irrelevant</option>
+                                    <option value="correct">Status: Correct Match</option>
+                                    <option value="incorrect">Status: Mismatch</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse min-w-[700px]">
+                                <thead>
+                                    <tr class="bg-surface-container-low border-b border-outline-variant">
+                                        <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant text-xs">ID</th>
+                                        <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant text-xs">ENTITY</th>
+                                        <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant text-xs">TWEET</th>
+                                        <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant text-xs">DATASET SENTIMENT</th>
+                                        <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant text-xs">MODEL PREDICTION</th>
+                                        <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant text-xs">CONFIDENCE</th>
+                                        <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant text-xs">STATUS</th>
+                                        <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant text-xs text-right">ACTIONS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="valTableBody" class="font-body-md text-xs">
+                                    <tr>
+                                        <td colspan="8" class="py-6 text-center text-on-surface-variant italic">
+                                            Loading validation samples...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 3. Distribution Charts -->
+                    <div id="val-content-charts" class="val-tab-content hidden space-y-stack-lg">
+                        <!-- Frequency Compare -->
+                        <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md space-y-6">
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Sentiment Frequency Comparison</h3>
+                            <p class="text-xs text-on-surface-variant">Comparing original dataset labels (multi-class) against local model predictions (binary POSITIVE/NEGATIVE).</p>
+                            
+                            <!-- Graph representation & filter controls -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-surface-container-low border border-outline-variant/30 p-4 rounded-lg">
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="text-[10px] font-label-caps text-on-surface-variant font-bold">CHART REPRESENTATION</label>
+                                    <select id="valChartTypeSelect" class="bg-surface-container border border-outline-variant text-on-surface text-xs rounded px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer">
+                                        <option value="bar">Horizontal Bar Chart</option>
+                                        <option value="histogram">Vertical Histogram</option>
+                                        <option value="pie">Pie Chart</option>
+                                        <option value="donut">Donut Chart</option>
+                                    </select>
+                                </div>
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="text-[10px] font-label-caps text-on-surface-variant font-bold">FILTER BY ENTITY</label>
+                                    <select id="valChartEntitySelect" class="bg-surface-container border border-outline-variant text-on-surface text-xs rounded px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer">
+                                        <option value="all">All Entities</option>
+                                    </select>
+                                </div>
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="text-[10px] font-label-caps text-on-surface-variant font-bold">ALIGNMENT STATUS</label>
+                                    <select id="valChartCorrectnessSelect" class="bg-surface-container border border-outline-variant text-on-surface text-xs rounded px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer">
+                                        <option value="all">All Records</option>
+                                        <option value="correct">Correct Matches Only</option>
+                                        <option value="incorrect">Mismatches Only</option>
+                                    </select>
+                                </div>
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="text-[10px] font-label-caps text-on-surface-variant font-bold">CONFIDENCE RANGE</label>
+                                    <select id="valChartConfidenceSelect" class="bg-surface-container border border-outline-variant text-on-surface text-xs rounded px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer">
+                                        <option value="all">All Confidences</option>
+                                        <option value="high">High (> 90%)</option>
+                                        <option value="medium">Medium (70% - 90%)</option>
+                                        <option value="low">Low (< 70%)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-gutter pt-2">
+                                <!-- Chart Card 1 -->
+                                <div class="bg-surface-container-low border border-outline-variant/30 rounded-lg p-4 space-y-4 flex flex-col">
+                                    <h4 class="text-sm font-semibold text-on-surface border-b border-outline-variant/20 pb-2">Dataset Sentiment Distribution</h4>
+                                    <div id="chartDistOriginal" class="space-y-3 min-h-[220px] flex flex-col justify-center items-center">
+                                        <!-- Loaded dynamically -->
+                                    </div>
+                                </div>
+                                <!-- Chart Card 2 -->
+                                <div class="bg-surface-container-low border border-outline-variant/30 rounded-lg p-4 space-y-4 flex flex-col">
+                                    <h4 class="text-sm font-semibold text-primary border-b border-outline-variant/20 pb-2">Model Prediction Distribution</h4>
+                                    <div id="chartDistPredicted" class="space-y-3 min-h-[220px] flex flex-col justify-center items-center">
+                                        <!-- Loaded dynamically -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Matplotlib Advanced Analytics Block -->
+                        <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md space-y-6">
+                            <div class="border-b border-outline-variant/20 pb-2 flex justify-between items-center">
+                                <div>
+                                    <h3 class="font-headline-sm text-headline-sm text-on-surface">Matplotlib Advanced Analytics</h3>
+                                    <p class="text-xs text-on-surface-variant mt-0.5">High-fidelity statistical analysis generated directly by the Python backend.</p>
+                                </div>
+                                <button onclick="reloadMatplotlibCharts()" class="py-1.5 px-3 bg-secondary-container hover:bg-secondary text-on-secondary-container hover:text-on-secondary text-xs font-semibold rounded transition-all active:scale-95 flex items-center gap-1.5 shadow-md">
+                                    <span class="material-symbols-outlined text-[14px]">refresh</span>
+                                    <span>Refresh Analytics</span>
+                                </button>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 xl:grid-cols-3 gap-gutter pt-2">
+                                <!-- Matplotlib Chart 1 -->
+                                <div class="bg-surface-container-low border border-outline-variant/30 rounded-lg p-4 space-y-3 flex flex-col items-center">
+                                    <h4 class="text-xs font-label-caps text-on-surface-variant font-bold text-center w-full">Dataset vs Model Distributions</h4>
+                                    <div class="w-full flex-grow flex items-center justify-center min-h-[200px] bg-background rounded border border-outline-variant/10 overflow-hidden">
+                                        <img id="mplDistImg" src="" alt="Matplotlib Distribution Charts" class="w-full h-auto object-contain hidden"/>
+                                        <div id="mplDistLoading" class="text-xs text-on-surface-variant italic py-6 animate-pulse">Loading distribution analytics...</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Matplotlib Chart 2 (Heatmap) -->
+                                <div class="bg-surface-container-low border border-outline-variant/30 rounded-lg p-4 space-y-3 flex flex-col items-center">
+                                    <h4 class="text-xs font-label-caps text-on-surface-variant font-bold text-center w-full">Sentiment Confusion Matrix Heatmap</h4>
+                                    <div class="w-full flex-grow flex items-center justify-center min-h-[200px] bg-background rounded border border-outline-variant/10 overflow-hidden">
+                                        <img id="mplHeatmapImg" src="" alt="Matplotlib Confusion Matrix Heatmap" class="w-full h-auto object-contain hidden"/>
+                                        <div id="mplHeatmapLoading" class="text-xs text-on-surface-variant italic py-6 animate-pulse">Loading heatmap...</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Matplotlib Chart 3 (Correlation) -->
+                                <div class="bg-surface-container-low border border-outline-variant/30 rounded-lg p-4 space-y-3 flex flex-col items-center">
+                                    <h4 class="text-xs font-label-caps text-on-surface-variant font-bold text-center w-full">Confidence vs Latency Correlation</h4>
+                                    <div class="w-full flex-grow flex items-center justify-center min-h-[200px] bg-background rounded border border-outline-variant/10 overflow-hidden">
+                                        <img id="mplCorrelationImg" src="" alt="Matplotlib Confidence vs Latency Correlation" class="w-full h-auto object-contain hidden"/>
+                                        <div id="mplCorrelationLoading" class="text-xs text-on-surface-variant italic py-6 animate-pulse">Loading correlation study...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SVG Latency Chart Block -->
+                        <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md space-y-4">
+                            <div class="flex justify-between items-center border-b border-outline-variant/20 pb-2">
+                                <div>
+                                    <h3 class="font-headline-sm text-headline-sm text-on-surface">Inference Latency per Dataset Sample</h3>
+                                    <p class="text-xs text-on-surface-variant mt-0.5">X-Axis: Sample IDs | Y-Axis: Execution Latency (ms). Green represents correct matches, Red represents mismatches. Hover bars for details.</p>
+                                </div>
+                                <span class="text-xs font-label-caps text-secondary font-mono bg-surface-container-low px-3 py-1.5 border border-outline-variant/30 rounded" id="latencyChartStats">Avg: -- ms</span>
+                            </div>
+                            <div id="valLatencyChartContainer" class="h-64 w-full relative pb-2 pl-2">
+                                <!-- Populated dynamically via JS -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 4. Analytical Insights -->
+                    <div id="val-content-insights" class="val-tab-content hidden bg-surface-container border border-outline-variant rounded-lg p-stack-md space-y-6">
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Binary Classifier Limitations on Multi-Class Data</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-4 text-sm leading-relaxed text-on-surface-variant">
+                                <h4 class="text-on-surface font-semibold text-sm">Why is the alignment accuracy lower than expected?</h4>
+                                <p>
+                                    The dataset loaded from Kaggle containing validation tweets uses 4 distinct labels: <code class="bg-surface-variant text-on-surface px-1.5 py-0.5 rounded text-xs">Positive</code>, <code class="bg-surface-variant text-on-surface px-1.5 py-0.5 rounded text-xs">Negative</code>, <code class="bg-surface-variant text-on-surface px-1.5 py-0.5 rounded text-xs">Neutral</code>, and <code class="bg-surface-variant text-on-surface px-1.5 py-0.5 rounded text-xs">Irrelevant</code>.
+                                </p>
+                                <p>
+                                    However, the local model deployed (<code class="text-secondary font-mono text-xs">distilbert-base-uncased-finetuned-sst-2-english</code>) is a binary sentiment classifier. It is mathematically constrained to classify any given text as either <span class="text-primary font-bold">POSITIVE</span> or <span class="text-error font-bold">NEGATIVE</span>.
+                                </p>
+                                <p>
+                                    Consequently, when the model evaluates a tweet that is labeled as <span class="text-on-surface-variant font-semibold">Neutral</span> or <span class="text-on-surface-variant font-semibold">Irrelevant</span> in the ground-truth dataset, it is forced to force-map it. This creates automatic "mismatching" status reports in our comparison table, lowering the net validation score.
+                                </p>
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <div class="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-2">
+                                    <span class="material-symbols-outlined text-primary text-[20px] align-middle">lightbulb</span>
+                                    <span class="font-semibold text-on-surface text-sm ml-1">Key Recommendation</span>
+                                    <p class="text-xs text-on-surface-variant leading-relaxed">
+                                        To achieve higher alignment accuracy on datasets with neutral content, replace the classifier model in <code class="bg-surface-variant px-1 rounded">app.py</code> with a multi-class sentiment model, such as <code class="text-primary font-mono text-xs">cardiffnlp/twitter-roberta-base-sentiment</code>, which supports positive, negative, and neutral classes.
+                                    </p>
+                                </div>
+                                
+                                <div class="p-4 rounded-lg border border-outline-variant/30 bg-surface-container-low text-xs space-y-2">
+                                    <span class="font-semibold text-on-surface">Data Cleanliness Metrics</span>
+                                    <div class="flex justify-between border-b border-outline-variant/20 pb-1 mt-1 text-on-surface-variant">
+                                        <span>Binary Class Support:</span>
+                                        <span class="text-primary font-bold">Yes</span>
+                                    </div>
+                                    <div class="flex justify-between border-b border-outline-variant/20 pb-1 text-on-surface-variant">
+                                        <span>Neutral/Irrelevant Support:</span>
+                                        <span class="text-error font-bold">No</span>
+                                    </div>
+                                    <div class="flex justify-between text-on-surface-variant">
+                                        <span>Tweet Pre-truncation:</span>
+                                        <span>512 chars (safeguard)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- SECTION 2: API KEYS -->
+        <section id="section-keys" class="hidden space-y-stack-lg">
+            <div>
+                <h2 class="font-display-lg text-display-lg text-on-surface">API Credentials</h2>
+                <p class="text-on-surface-variant mt-1">Manage API keys to authenticate application requests securely.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+                <!-- Left panel: Generate Key -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md h-fit">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">Generate API Key</h3>
+                    <form id="generateKeyForm" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-label-caps text-on-surface-variant mb-2">KEY NAME</label>
+                            <input id="keyNameInput" type="text" placeholder="e.g. Production Client Key" class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md" required/>
+                        </div>
+                        <button type="submit" class="w-full py-2 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-semibold rounded transition-colors flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">key</span>
+                            <span>Generate Credentials</span>
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Right panel: Key table -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md lg:col-span-2 flex flex-col">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">Active Credentials</h3>
+                    <div class="overflow-x-auto flex-1">
+                        <table class="w-full text-left border-collapse min-w-[500px]">
+                            <thead>
+                                <tr class="bg-surface-container-low border-b border-outline-variant">
+                                    <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant">NAME</th>
+                                    <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant">TOKEN KEY</th>
+                                    <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant">CREATED</th>
+                                    <th class="py-2.5 px-4 font-label-caps text-label-caps text-on-surface-variant">STATUS</th>
+                                    <th class="py-2.5 px-4 text-right"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="apiKeysTableBody" class="font-code-md text-code-md text-sm">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- SECTION 3: DOCUMENTATION -->
+        <section id="section-docs" class="hidden space-y-stack-lg">
+            <div>
+                <h2 class="font-display-lg text-display-lg text-on-surface">Developer Documentation</h2>
+                <p class="text-on-surface-variant mt-1">Get started integrating with the API Engine gateway services.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+                <!-- Guide & Samples -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md space-y-6">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface border-b border-outline-variant/30 pb-2">Quick Start</h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="text-sm font-semibold text-primary mb-1">1. Authentication Header</h4>
+                            <p class="text-xs text-on-surface-variant leading-relaxed">
+                                To call endpoints, supply the JWT ID token or custom API key in the request headers:
+                            </p>
+                            <pre class="bg-surface-container-lowest border border-outline-variant rounded p-3 text-xs text-secondary font-mono mt-2 overflow-x-auto">Authorization: Bearer &lt;YOUR_TOKEN&gt;</pre>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-sm font-semibold text-primary mb-1">2. Endpoint: Hello World API</h4>
+                            <span class="inline-block bg-primary/10 border border-primary/20 text-primary font-bold font-code-md text-xs px-2 py-0.5 rounded mb-2">GET /api/saludo</span>
+                            <p class="text-xs text-on-surface-variant leading-relaxed mb-3">
+                                Test greeting endpoint that responds with a localized greeting and current timestamp.
+                            </p>
+                            
+                            <!-- curl sample -->
+                            <div class="space-y-2">
+                                <span class="text-[10px] font-label-caps text-on-surface-variant">SHELL CURL REQUEST</span>
+                                <pre id="docCurlPre" class="bg-surface-container-lowest border border-outline-variant rounded p-3 text-xs text-on-surface-variant font-mono overflow-x-auto">curl -X GET http://localhost:5000/api/saludo \
+  -H "Authorization: Bearer simulated_developer_guest_token"</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Try it live console -->
+                <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface border-b border-outline-variant/30 pb-2 mb-4">Try It Out</h3>
+                    
+                    <div class="space-y-4 flex-1 flex flex-col">
+                        <div class="flex items-center gap-2">
+                            <span class="bg-primary/25 border border-primary/40 text-primary text-xs font-bold px-2 py-1 rounded">GET</span>
+                            <span class="font-mono text-sm text-on-surface">/api/saludo</span>
+                        </div>
+                        
+                        <div class="space-y-2 text-xs">
+                            <label class="block font-label-caps text-on-surface-variant">AUTHORIZATION HEADER TOKEN</label>
+                            <div class="relative w-full">
+                                <input id="apiConsoleToken" type="text" autocomplete="off" spellcheck="false" placeholder="No token supplied (Anonymous Call)" class="w-full bg-surface-container-low border border-outline-variant rounded py-2 pl-3 pr-10 text-on-surface focus:outline-none focus:border-primary font-mono text-xs"/>
+                                <button id="toggleConsoleTokenVisibilityBtn" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-1 rounded transition-colors flex items-center justify-center" title="Toggle Masking">
+                                    <span class="material-symbols-outlined text-[16px] align-middle">visibility</span>
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-on-surface-variant">Automatically updates when you sign in. Auto-saving is disabled for security.</p>
+                        </div>
+                        
+                        <button id="apiConsoleTestBtn" class="w-full py-2.5 bg-secondary-container hover:bg-secondary text-on-secondary-container hover:text-on-secondary font-semibold rounded transition-all active:scale-95 duration-200 flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">send</span>
+                            <span>Send Request</span>
+                        </button>
+                        
+                        <div class="flex-1 flex flex-col min-h-[180px] mt-4">
+                            <div class="flex justify-between items-center text-xs font-label-caps text-on-surface-variant mb-2">
+                                <span>RESPONSE PANEL</span>
+                                <span id="apiConsoleResponseStatus" class="font-bold text-primary"></span>
+                            </div>
+                            <pre id="apiConsoleResponseBox" class="bg-surface-container-lowest border border-outline-variant rounded p-4 text-xs font-mono text-secondary overflow-auto flex-1 max-h-[220px]">
+Click "Send Request" to perform API fetch calls.
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- SECTION 4: LOGS -->
+        <section id="section-logs" class="hidden space-y-stack-lg">
+            <div>
+                <h2 class="font-display-lg text-display-lg text-on-surface">System Gateway Logs</h2>
+                <p class="text-on-surface-variant mt-1">Live monitoring logs capturing cluster API calls and routing details.</p>
+            </div>
+            
+            <div class="bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col h-[520px]">
+                <div class="flex items-center justify-between pb-3 border-b border-outline-variant/30 text-xs mb-4">
+                    <span class="flex items-center gap-2 text-primary font-semibold">
+                        <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+                        LOG STREAM ATTACHED
+                    </span>
+                    <button id="clearLogsBtn" class="hover:text-primary transition-colors flex items-center gap-1.5 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                        <span>Clear Log Console</span>
+                    </button>
+                </div>
+                <div id="logConsole" class="flex-1 bg-surface-container-lowest border border-outline-variant rounded p-4 overflow-y-auto font-mono text-xs text-on-surface-variant space-y-1.5">
+                    <!-- Logs lines populated dynamically -->
+                </div>
+            </div>
+        </section>
+        
+        <!-- SECTION 5: SESSION METADATA -->
+        <section id="section-metadata" class="hidden space-y-stack-lg">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="font-display-lg text-display-lg text-on-surface">Session Metadata</h2>
+                    <p class="text-on-surface-variant mt-1">Technical claims and token payload of the authenticated user.</p>
+                </div>
+                <!-- Clicks Badge -->
+                <span class="flex items-center gap-1.5 text-xs font-label-caps text-label-caps text-primary px-3 py-1 border border-primary/20 rounded bg-primary/5">
+                    <span class="material-symbols-outlined text-[14px]">touch_app</span>
+                    Clicks: <span class="auth-click-count-display">0</span>
+                </span>
+            </div>
+            
+            <!-- Authenticated View -->
+            <div id="metadataAuthView" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+                <!-- Left column: User Card -->
+                <div class="lg:col-span-1 bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col gap-4">
+                    <div class="flex flex-col items-center text-center pb-4 border-b border-outline-variant/30">
+                        <img id="metaUserAvatar" src="" alt="User Profile Image" class="w-24 h-24 rounded-full border-2 border-primary shadow-lg mb-3 object-cover"/>
+                        <h3 id="metaUserName" class="font-headline-sm text-headline-sm text-on-surface">...</h3>
+                        <p id="metaUserEmail" class="text-on-surface-variant text-sm mt-1">...</p>
+                    </div>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-on-surface-variant">Auth Method:</span>
+                            <span id="metaAuthMethod" class="text-primary font-semibold">Google OAuth</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-on-surface-variant">Issuer (iss):</span>
+                            <span id="metaClaimIss" class="font-mono text-xs text-on-surface truncate max-w-[150px]">...</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-on-surface-variant">Subject (sub):</span>
+                            <span id="metaClaimSub" class="font-mono text-xs text-on-surface truncate max-w-[150px]">...</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-on-surface-variant">Token Expires:</span>
+                            <span id="metaClaimExp" class="text-on-surface text-xs">...</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats block inside User Card -->
+                    <div class="mt-auto pt-4 border-t border-outline-variant/30 flex flex-col gap-2">
+                        <h4 class="font-label-caps text-label-caps text-on-surface-variant mb-1">Local Session Stats</h4>
+                        <div class="flex justify-between text-xs">
+                            <span>Profile Open Clicks:</span>
+                            <span class="auth-click-count-display font-semibold text-primary">0</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span>API Call Clicks:</span>
+                            <span class="api-call-count-display font-semibold text-secondary">0</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span>Login Successes:</span>
+                            <span id="metaLoginCount" class="font-semibold text-primary-fixed-dim">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right column: JSON Viewer -->
+                <div class="lg:col-span-2 bg-surface-container border border-outline-variant rounded-lg flex flex-col">
+                    <div class="p-4 border-b border-outline-variant flex justify-between items-center">
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">code</span>
+                            Decoded JWT Claims (Payload)
+                        </h3>
+                        <button id="copyMetadataJsonBtn" class="flex items-center gap-1 bg-surface-variant hover:bg-surface-variant/80 text-on-surface text-xs py-1.5 px-2.5 rounded transition-all active:scale-95 duration-200">
+                            <span class="material-symbols-outlined text-[14px]">content_copy</span>
+                            <span>Copy Claims</span>
+                        </button>
+                    </div>
+                    <div class="p-4 flex-1 flex flex-col">
+                        <pre class="bg-surface-container-lowest border border-outline-variant rounded p-4 text-xs font-code-md text-primary overflow-auto flex-1 max-h-[360px]" id="metaJsonViewer">
+                            <!-- Decoded payload JSON goes here -->
+                        </pre>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Unauthenticated View -->
+            <div id="metadataUnauthView" class="bg-surface-container border border-outline-variant rounded-lg p-stack-lg flex flex-col items-center justify-center text-center max-w-xl mx-auto my-12 gap-4">
+                <div class="w-16 h-16 rounded-full bg-error-container/20 flex items-center justify-center text-error border border-error/30 animate-pulse">
+                    <span class="material-symbols-outlined text-[32px]">lock</span>
+                </div>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface">Authentication Required</h3>
+                <p class="text-on-surface-variant text-sm">You must be logged in to inspect session tokens and OAuth claims.</p>
+                <button id="metaLoginTrigger" class="bg-primary-container hover:bg-primary-fixed text-on-primary-container py-2.5 px-6 rounded font-semibold text-sm transition-all duration-200 active:scale-95 flex items-center gap-2 mt-2">
+                    <span class="material-symbols-outlined">login</span>
+                    <span>Log In Now</span>
+                </button>
+            </div>
+        </section>
+        
+        <!-- SECTION 6: SETTINGS -->
+        <section id="section-settings" class="hidden space-y-stack-lg">
+            <div>
+                <h2 class="font-display-lg text-display-lg text-on-surface">Settings</h2>
+                <p class="text-on-surface-variant mt-1">Configure user interfaces, gateway latency options, and theme controls.</p>
+            </div>
+            
+            <div class="max-w-2xl bg-surface-container border border-outline-variant rounded-lg p-stack-md space-y-6">
+                <!-- Theme Select -->
+                <div>
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Display Theme</h3>
+                    <p class="text-xs text-on-surface-variant mb-4">Choose between dark mode, light mode, or match system.</p>
+                    <div class="grid grid-cols-3 gap-4">
+                        <button onclick="setTheme('dark')" id="themeDarkBtn" class="py-3 bg-surface-container-low border border-outline-variant rounded flex flex-col items-center gap-2 text-on-surface-variant hover:text-on-surface transition-all">
+                            <span class="material-symbols-outlined text-[24px]">dark_mode</span>
+                            <span class="text-xs font-semibold">Dark</span>
+                        </button>
+                        <button onclick="setTheme('light')" id="themeLightBtn" class="py-3 bg-surface-container-low border border-outline-variant rounded flex flex-col items-center gap-2 text-on-surface-variant hover:text-on-surface transition-all">
+                            <span class="material-symbols-outlined text-[24px]">light_mode</span>
+                            <span class="text-xs font-semibold">Light</span>
+                        </button>
+                        <button onclick="setTheme('system')" id="themeSystemBtn" class="py-3 bg-surface-container-low border border-outline-variant rounded flex flex-col items-center gap-2 text-on-surface-variant hover:text-on-surface transition-all">
+                            <span class="material-symbols-outlined text-[24px]">desktop_windows</span>
+                            <span class="text-xs font-semibold">System</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <hr class="border-outline-variant/30"/>
+                
+                <!-- Gateway simulation -->
+                <div>
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Gateway Developer Controls</h3>
+                    <p class="text-xs text-on-surface-variant mb-4">Simulate conditions to test error rates and responsive designs.</p>
+                    <div class="space-y-4 text-sm">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input id="toggleLatencySimulation" type="checkbox" class="h-4 w-4 bg-surface-container border border-outline-variant rounded text-primary focus:ring-primary"/>
+                            <div>
+                                <span class="text-on-surface font-semibold">Simulate High Latency</span>
+                                <p class="text-xs text-on-surface-variant">Artificially adds a random 300ms - 800ms delay to API Console testing.</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input id="toggleErrorSimulation" type="checkbox" class="h-4 w-4 bg-surface-container border border-outline-variant rounded text-primary focus:ring-primary"/>
+                            <div>
+                                <span class="text-on-surface font-semibold">Simulate HTTP 500 Server Errors</span>
+                                <p class="text-xs text-on-surface-variant">Forces API tests to return a mock Internal Server Error (500) status.</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <hr class="border-outline-variant/30"/>
+                
+                <!-- Reset cache -->
+                <div>
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Reset Session Data</h3>
+                    <p class="text-xs text-on-surface-variant mb-4">Clear all local storage credentials, API keys, and click counts.</p>
+                    <button onclick="resetAllSessionData()" class="py-2 px-4 bg-error-container/20 hover:bg-error-container/40 text-error border border-error/20 rounded font-semibold text-xs transition-colors active:scale-95 duration-200">
+                        Reset Local Database
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- SECTION 7: SUPPORT -->
+        <section id="section-support" class="hidden space-y-stack-lg">
+            <div>
+                <h2 class="font-display-lg text-display-lg text-on-surface">Developer Support</h2>
+                <p class="text-on-surface-variant mt-1">Submit tickets to report cluster failures or request assistance.</p>
+            </div>
+            
+            <div class="max-w-xl bg-surface-container border border-outline-variant rounded-lg p-stack-md">
+                <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">Submit Support Ticket</h3>
+                <form id="supportForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-label-caps text-on-surface-variant mb-2">TICKET SUBJECT</label>
+                        <input id="supportSubject" type="text" placeholder="e.g. Cluster integration failing" class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary font-body-md" required/>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-label-caps text-on-surface-variant mb-2">SEVERITY LEVEL</label>
+                        <select id="supportSeverity" class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary font-body-md">
+                            <option value="low">Low - General Question</option>
+                            <option value="medium">Medium - Bug Investigation</option>
+                            <option value="high">High - Staging Down</option>
+                            <option value="critical">Critical - Production Outage</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-label-caps text-on-surface-variant mb-2">PROBLEM DESCRIPTION</label>
+                        <textarea id="supportDescription" rows="4" placeholder="Detail your issue here..." class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary font-body-md" required></textarea>
+                    </div>
+                    <button type="submit" class="w-full py-2 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-semibold rounded transition-colors active:scale-95 duration-200 flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">send</span>
+                        <span>Submit Ticket</span>
+                    </button>
+                </form>
+            </div>
+        </section>
+        
+    </div>
+</main>
+
+</div> <!-- end of appLayoutContainer -->
+
+<!-- LOGIN MODAL DIALOG OVERLAY -->
+<div id="loginModal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-surface-container border border-outline-variant rounded-lg p-6 max-w-sm w-full relative shadow-2xl flex flex-col gap-4">
+        <!-- Close trigger -->
+        <button id="closeLoginModalBtn" class="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+        
+        <div class="text-center space-y-1 mt-2">
+            <span class="material-symbols-outlined text-primary text-[42px] animate-bounce">admin_panel_settings</span>
+            <h3 class="font-headline-md text-headline-md font-bold text-on-surface">API Engine Login</h3>
+            <p class="text-on-surface-variant text-xs">Access secure developer controls and monitor live metrics.</p>
+        </div>
+        
+        <hr class="border-outline-variant/30"/>
+        
+        <!-- Native Google OAuth Element -->
+        <div class="flex flex-col gap-2">
+            <span class="text-[10px] font-label-caps text-on-surface-variant text-center mb-1">NATIVE GOOGLE OAUTH LOGIN</span>
+            <!-- Google Client Initializer -->
+            <div id="g_id_onload_modal"
+                data-client_id="{{ google_client_id }}"
+                data-context="signin"
+                data-ux_mode="popup"
+                data-callback="handleCredentialResponse"
+                data-auto_prompt="false">
+            </div>
+            <!-- Google Standard Button -->
+            <div class="g_id_signin_modal flex justify-center" 
+                data-type="standard" 
+                data-shape="pill" 
+                data-theme="filled_blue" 
+                data-text="signin_with" 
+                data-size="large"
+                data-logo_alignment="left">
+            </div>
+        </div>
+        
+        <div class="relative flex py-2 items-center hidden">
+            <div class="flex-grow border-t border-outline-variant/20"></div>
+            <span class="flex-shrink mx-4 text-[10px] font-label-caps text-on-surface-variant">OR TEST LOCALLY</span>
+            <div class="flex-grow border-t border-outline-variant/20"></div>
+        </div>
+        
+        <!-- Simulation fallback -->
+        <button id="simulateLoginBtnModal" class="hidden w-full flex items-center justify-center gap-2 bg-secondary-container/20 hover:bg-secondary-container/40 text-secondary border border-secondary/20 py-2.5 px-4 rounded font-semibold text-sm transition-all duration-200 active:scale-95">
+            <span class="material-symbols-outlined">terminal</span>
+            <span>Simulate Developer Login</span>
+        </button>
+    </div>
+</div>
+
+<!-- ADD SAMPLE MODAL DIALOG -->
+<div id="addSampleModal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-surface-container border border-outline-variant rounded-lg p-6 max-w-md w-full relative shadow-2xl flex flex-col gap-4">
+        <button onclick="closeAddSampleModal()" class="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+        <div class="space-y-1">
+            <h3 class="font-headline-md text-headline-md font-bold text-on-surface">Add Validation Sample</h3>
+            <p class="text-on-surface-variant text-xs">Append a new validation tweet to the in-memory testing set.</p>
+        </div>
+        <hr class="border-outline-variant/30"/>
+        <form id="addSampleForm" onsubmit="handleAddSampleSubmit(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-label-caps text-on-surface-variant mb-2">TWEET CONTENT</label>
+                <textarea id="addSampleTweetText" rows="3" placeholder="Type tweet content..." class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-xs" required></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-label-caps text-on-surface-variant mb-2">GROUND-TRUTH SENTIMENT</label>
+                    <select id="addSampleSentiment" class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-xs">
+                        <option value="Positive">Positive</option>
+                        <option value="Negative">Negative</option>
+                        <option value="Neutral">Neutral</option>
+                        <option value="Irrelevant">Irrelevant</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-label-caps text-on-surface-variant mb-2">ENTITY / CONTEXT</label>
+                    <input id="addSampleEntity" type="text" placeholder="e.g. Google" class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-xs" required/>
+                </div>
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-semibold rounded text-xs transition-colors active:scale-95 flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">add</span>
+                <span>Insert and Run Inference</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT SAMPLE MODAL DIALOG -->
+<div id="editSampleModal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-surface-container border border-outline-variant rounded-lg p-6 max-w-md w-full relative shadow-2xl flex flex-col gap-4">
+        <button onclick="closeEditSampleModal()" class="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+        <div class="space-y-1">
+            <h3 class="font-headline-md text-headline-md font-bold text-on-surface">Edit Validation Sample</h3>
+            <p class="text-on-surface-variant text-xs">Modify the text or ground-truth sentiment for Sample ID: <span id="editSampleIdDisplay" class="font-mono text-primary">--</span></p>
+        </div>
+        <hr class="border-outline-variant/30"/>
+        <form id="editSampleForm" onsubmit="handleEditSampleSubmit(event)" class="space-y-4">
+            <input id="editSampleId" type="hidden"/>
+            <div>
+                <label class="block text-xs font-label-caps text-on-surface-variant mb-2">TWEET CONTENT</label>
+                <textarea id="editSampleTweetText" rows="3" placeholder="Type tweet content..." class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-xs" required></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-label-caps text-on-surface-variant mb-2">GROUND-TRUTH SENTIMENT</label>
+                <select id="editSampleSentiment" class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-xs">
+                    <option value="Positive">Positive</option>
+                    <option value="Negative">Negative</option>
+                    <option value="Neutral">Neutral</option>
+                    <option value="Irrelevant">Irrelevant</option>
+                </select>
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-semibold rounded text-xs transition-colors active:scale-95 flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">save</span>
+                <span>Save Changes and Re-run</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- NEW PROJECT MODAL DIALOG -->
+<div id="newProjectModal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-surface-container border border-outline-variant rounded-lg p-6 max-w-md w-full relative shadow-2xl flex flex-col gap-4">
+        <button onclick="closeNewProjectModal()" class="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+        <div class="space-y-1">
+            <h3 class="font-headline-md text-headline-md font-bold text-on-surface">Create New Validation Project</h3>
+            <p class="text-on-surface-variant text-xs">Configure a new workspace to validate another API model or benchmark dataset.</p>
+        </div>
+        <hr class="border-outline-variant/30"/>
+        <form id="newProjectForm" onsubmit="handleNewProjectSubmit(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-label-caps text-on-surface-variant mb-2">PROJECT NAME</label>
+                <input id="newProjectName" type="text" placeholder="e.g. Customer Reviews Classifier" class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-xs" required/>
+            </div>
+            <div>
+                <label class="block text-xs font-label-caps text-on-surface-variant mb-2">DESCRIPTION</label>
+                <textarea id="newProjectDescription" rows="2" placeholder="Briefly describe the purpose of this project..." class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-xs" required></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-label-caps text-on-surface-variant mb-2">TARGET CLASSIFIER MODEL</label>
+                <select id="newProjectModel" class="w-full bg-surface-container-low border border-outline-variant rounded py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-xs">
+                    <option value="distilbert-local">DistilBERT Local (default)</option>
+                    <option value="roberta-twitter">RoBERTa Twitter Sentiment (Multi-class)</option>
+                    <option value="gpt-4-sentiment">GPT-4 zero-shot Classifier</option>
+                    <option value="custom-api">Custom Endpoint API (Manual URL)</option>
+                </select>
+            </div>
+            <div class="text-xs text-on-surface-variant bg-surface-container-low p-3 rounded border border-outline-variant/20 flex flex-col gap-1">
+                <div class="flex justify-between">
+                    <span>New Project Button Clicks:</span>
+                    <span id="newProjectClicksDisplay" class="font-bold text-primary font-mono">0</span>
+                </div>
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-semibold rounded text-xs transition-colors active:scale-95 flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">add_circle</span>
+                <span>Create Validation Project</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- TOAST NOTIFICATION CONTAINER -->
+<div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+    <!-- Populated via JS -->
+</div>
+
+<!-- Static JS code -->
+<script src="{{ url_for('static', path='js/app.js') }}" defer></script>
+
+</body>
+</html>
