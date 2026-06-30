@@ -11,6 +11,8 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from transformers import pipeline
 import kagglehub
+import pymysql
+import pymysql.cursors
 
 # Configuración de Matplotlib no interactivo (Agg) para entornos multiproceso y subprocesos
 import matplotlib
@@ -80,80 +82,75 @@ def verify_authentication(authorization: str = Header(None)):
         )
     return user_info
 
-# --- GESTIÓN DE LA BASE DE DATOS Y PIPELINE DE INFERENCIA ---
-def get_validation_csv_path():
+# --- GESTIÓN DE LA BASE DE DATOS Y CONEXIÓN A MYSQL ---
+def get_db_connection():
+    db_host = os.environ.get("DB_HOST", "localhost")
+    db_user = os.environ.get("DB_USER", "root")
+    db_password = os.environ.get("DB_PASSWORD", "password")
+    db_name = os.environ.get("DB_NAME", "db_sentimientos")
+    
+    return pymysql.connect(
+        host=db_host,
+        user=db_user,
+        password=db_password,
+        database=db_name,
+        cursorclass=pymysql.cursors.DictCursor
+    )
+
+def get_all_records_for_charts():
+    connection = get_db_connection()
     try:
-        path = kagglehub.dataset_download("umersajid842/twitter-validation-csv")
-        csv_path = os.path.join(path, "twitter_validation.csv")
-        if not os.path.exists(csv_path):
-            for root, dirs, files in os.walk(path):
-                if "twitter_validation.csv" in files:
-                    csv_path = os.path.join(root, "twitter_validation.csv")
-                    break
-        return csv_path
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence FROM tweets")
+            rows = cursor.fetchall()
     except Exception as e:
-        print("Error al descargar el dataset desde Kagglehub:", e)
-        return None
-
-def run_records_inference():
-    global validation_records
-    print(f"Ejecutando inferencia sobre {len(validation_records)} registros en memoria...")
-    for r in validation_records:
-        start_time = time.time()
-        res = clasificador(r['tweet'][:512])[0]
-        latency = (time.time() - start_time) * 1000
-
-        r['prediction'] = res['label']
-        r['confidence'] = round(res['score'], 4)
-        r['latency_ms'] = round(latency, 2)
-
-        # Lógica de comparación de sentimientos
+        print("Error al obtener registros para gráficos desde MySQL:", e)
+        return []
+    finally:
+        connection.close()
+        
+    records = []
+    for row in rows:
+        pred = row['sentiment_prediction'] if row['sentiment_prediction'] else "N/A"
+        conf = float(row['confidence']) if row['confidence'] is not None else 0.0
+        
         is_correct = False
-        actual_sentiment = r['sentiment']
-        pred_sentiment = r['prediction']
-        if actual_sentiment.upper() == pred_sentiment.upper():
+        actual = row['sentiment_real']
+        if actual.upper() == pred.upper():
             is_correct = True
-        elif actual_sentiment.lower() == "positive" and pred_sentiment == "POSITIVE":
+        elif actual.lower() == "positive" and pred == "POSITIVE":
             is_correct = True
-        elif actual_sentiment.lower() == "negative" and pred_sentiment == "NEGATIVE":
+        elif actual.lower() == "negative" and pred == "NEGATIVE":
             is_correct = True
-        r['correct'] = is_correct
-
-def initialize_dataset(limit: str = "20"):
-    global validation_records, current_limit
-    current_limit = limit
-    csv_path = get_validation_csv_path()
-    if not csv_path or not os.path.exists(csv_path):
-        print("Warning: No se encontró el dataset para inicializar la base de datos en memoria.")
-        return
-
-    print(f"Cargando y preparando base de datos en memoria con límite {limit}...")
-    columnas = ['ID', 'Entity', 'Sentiment', 'Tweet']
-    df_val = pd.read_csv(csv_path, names=columnas).dropna()
-    if limit != "all":
-        try:
-            val_limit = int(limit)
-            df_val = df_val.head(val_limit)
-        except ValueError:
-            df_val = df_val.head(20)
-
-    validation_records = []
-    for _, row in df_val.iterrows():
-        validation_records.append({
-            "id": int(row['ID']),
-            "entity": str(row['Entity']),
-            "sentiment": str(row['Sentiment']),
-            "tweet": str(row['Tweet']),
-            "prediction": "N/A",
-            "confidence": 0.0,
-            "correct": False,
-            "latency_ms": 0.0
+            
+        records.append({
+            "id": row['id_tweet'],
+            "entity": row['entity'],
+            "sentiment": row['sentiment_real'],
+            "tweet": row['tweet_text'],
+            "prediction": pred,
+            "confidence": conf,
+            "correct": is_correct,
+            "latency_ms": 45.0 if pred != "N/A" else 0.0  # Latencia mockeada para consistencia visual en el timeline
         })
-    run_records_inference()
+    return records
 
 @app.on_event("startup")
 def startup_event():
-    initialize_dataset()
+    print("Iniciando aplicación. Verificando conexión a base de datos MySQL...")
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) as total FROM tweets")
+            res = cursor.fetchone()
+            print(f"Conexión exitosa a MySQL. Registros encontrados en la tabla 'tweets': {res['total']}")
+        connection.close()
+    except Exception as e:
+        print("\n" + "="*80)
+        print("ADVERTENCIA: No se pudo conectar a la base de datos MySQL en startup.")
+        print(f"Detalle del error: {e}")
+        print("Asegúrate de iniciar el servidor de MySQL y configurar las credenciales correctas.")
+        print("="*80 + "\n")
 
 
 # --- RUTAS DE LA APLICACIÓN ---
@@ -193,37 +190,78 @@ def analizar_texto(input_data: TweetInput, user_info: dict = Depends(verify_auth
 # 4. Endpoint de obtención de los datos del dataset y métricas (Autenticado)
 @app.get("/api/validation-results")
 def get_validation_results(limit: str = None, user_info: dict = Depends(verify_authentication)):
-    global validation_records, current_limit
-    if limit is None:
-        limit = current_limit
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            # Consultar con o sin límite
+            if limit and limit != "all":
+                try:
+                    val_limit = int(limit)
+                    cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence FROM tweets LIMIT %s", (val_limit,))
+                except ValueError:
+                    cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence FROM tweets LIMIT 20")
+            else:
+                cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence FROM tweets")
+            
+            rows = cursor.fetchall()
+    except Exception as e:
+        print("Error consultando MySQL:", e)
+        raise HTTPException(status_code=500, detail=f"Error al consultar la base de datos MySQL: {str(e)}")
+    finally:
+        connection.close()
 
-    if not validation_records or limit != current_limit:
-        initialize_dataset(limit)
-
-    correct_count = sum(1 for r in validation_records if r['correct'])
-    total_latency = sum(r['latency_ms'] for r in validation_records)
-    total_samples = len(validation_records)
-
+    records = []
+    correct_count = 0
+    
+    for row in rows:
+        pred = row['sentiment_prediction'] if row['sentiment_prediction'] else "N/A"
+        conf = float(row['confidence']) if row['confidence'] is not None else 0.0
+        
+        # Lógica de comparación de sentimientos
+        is_correct = False
+        actual = row['sentiment_real']
+        if actual.upper() == pred.upper():
+            is_correct = True
+        elif actual.lower() == "positive" and pred == "POSITIVE":
+            is_correct = True
+        elif actual.lower() == "negative" and pred == "NEGATIVE":
+            is_correct = True
+            
+        if is_correct and pred != "N/A":
+            correct_count += 1
+            
+        records.append({
+            "id": row['id_tweet'],
+            "entity": row['entity'],
+            "sentiment": row['sentiment_real'],
+            "tweet": row['tweet_text'],
+            "prediction": pred,
+            "confidence": conf,
+            "correct": is_correct,
+            "latency_ms": 45.0 if pred != "N/A" else 0.0  # Latencia mockeada para visualización
+        })
+        
+    total_samples = len(records)
     accuracy = round(correct_count / total_samples, 4) if total_samples > 0 else 0
-    avg_confidence = round(sum(r['confidence'] for r in validation_records) / total_samples, 4) if total_samples > 0 else 0
-    avg_latency = round(total_latency / total_samples, 2) if total_samples > 0 else 0
+    avg_confidence = round(sum(r['confidence'] for r in records) / total_samples, 4) if total_samples > 0 else 0
+    avg_latency = round(sum(r['latency_ms'] for r in records) / total_samples, 2) if total_samples > 0 else 0
 
     # Contar distribución original
     original_dist = {}
-    for r in validation_records:
+    for r in records:
         original_dist[r['sentiment']] = original_dist.get(r['sentiment'], 0) + 1
 
     # Contar distribución de predicciones
     pred_dist = {"POSITIVE": 0, "NEGATIVE": 0}
-    for r in validation_records:
-        pred_label = r.get('prediction', 'N/A')
+    for r in records:
+        pred_label = r['prediction']
         if pred_label in pred_dist:
             pred_dist[pred_label] += 1
         else:
             pred_dist[pred_label] = 1
 
     return {
-        "records": validation_records,
+        "records": records,
         "metrics": {
             "total_samples": total_samples,
             "correct_count": correct_count,
@@ -240,108 +278,172 @@ def get_validation_results(limit: str = None, user_info: dict = Depends(verify_a
 # 5. Agregar un nuevo tweet de validación (Autenticado)
 @app.post("/api/validation-results")
 def add_validation_sample(input_data: NewSampleInput, user_info: dict = Depends(verify_authentication)):
-    global validation_records
-    
-    # Generar un ID único autoincremental
-    existing_ids = [r['id'] for r in validation_records]
-    next_id = max(existing_ids) + 1 if existing_ids else 1000
-
-    new_record = {
-        "id": next_id,
-        "entity": input_data.entity,
-        "sentiment": input_data.sentiment,
-        "tweet": input_data.tweet,
-        "prediction": "N/A",
-        "confidence": 0.0,
-        "correct": False,
-        "latency_ms": 0.0
-    }
-
     # Evaluar inmediatamente el sentimiento del nuevo tweet
     start_time = time.time()
-    res = clasificador(new_record['tweet'][:512])[0]
+    res = clasificador(input_data.tweet[:512])[0]
     latency = (time.time() - start_time) * 1000
 
-    new_record['prediction'] = res['label']
-    new_record['confidence'] = round(res['score'], 4)
-    new_record['latency_ms'] = round(latency, 2)
+    pred = res['label']
+    conf = round(res['score'], 4)
+
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            # Buscar el siguiente ID único
+            cursor.execute("SELECT MAX(id_tweet) as max_id FROM tweets")
+            max_row = cursor.fetchone()
+            next_id = (max_row['max_id'] + 1) if (max_row and max_row['max_id'] is not None) else 1000
+            
+            sql_insert = """
+                INSERT INTO tweets (id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql_insert, (next_id, input_data.entity, input_data.sentiment, input_data.tweet, pred, conf))
+            connection.commit()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al insertar el tweet en la base de datos MySQL: {str(e)}")
+    finally:
+        connection.close()
 
     # Determinar si es correcto
     is_correct = False
-    actual = new_record['sentiment']
-    pred = new_record['prediction']
+    actual = input_data.sentiment
     if actual.upper() == pred.upper():
         is_correct = True
     elif actual.lower() == "positive" and pred == "POSITIVE":
         is_correct = True
     elif actual.lower() == "negative" and pred == "NEGATIVE":
         is_correct = True
-    new_record['correct'] = is_correct
 
-    validation_records.append(new_record)
-    return {"status": "success", "record": new_record}
+    return {
+        "status": "success",
+        "record": {
+            "id": next_id,
+            "entity": input_data.entity,
+            "sentiment": input_data.sentiment,
+            "tweet": input_data.tweet,
+            "prediction": pred,
+            "confidence": conf,
+            "correct": is_correct,
+            "latency_ms": round(latency, 2)
+        }
+    }
 
 # 6. Editar un tweet existente (Autenticado)
 @app.put("/api/validation-results/{row_id}")
 def edit_validation_sample(row_id: int, input_data: EditSampleInput, user_info: dict = Depends(verify_authentication)):
-    global validation_records
-    for r in validation_records:
-        if r['id'] == row_id:
-            r['tweet'] = input_data.tweet
-            r['sentiment'] = input_data.sentiment
+    # Re-evaluar de forma individual
+    start_time = time.time()
+    res = clasificador(input_data.tweet[:512])[0]
+    latency = (time.time() - start_time) * 1000
 
-            # Re-evaluar de forma individual
-            start_time = time.time()
-            res = clasificador(r['tweet'][:512])[0]
-            latency = (time.time() - start_time) * 1000
+    pred = res['label']
+    conf = round(res['score'], 4)
 
-            r['prediction'] = res['label']
-            r['confidence'] = round(res['score'], 4)
-            r['latency_ms'] = round(latency, 2)
-
-            # Determinar si es correcto
-            is_correct = False
-            actual = r['sentiment']
-            pred = r['prediction']
-            if actual.upper() == pred.upper():
-                is_correct = True
-            elif actual.lower() == "positive" and pred == "POSITIVE":
-                is_correct = True
-            elif actual.lower() == "negative" and pred == "NEGATIVE":
-                is_correct = True
-            r['correct'] = is_correct
-
-            return {"status": "success", "record": r}
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id_tweet, entity FROM tweets WHERE id_tweet = %s", (row_id,))
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Registro de tweet no encontrado.")
             
-    raise HTTPException(status_code=404, detail="Registro de tweet no encontrado.")
+            entity = row['entity']
+            
+            sql_update = """
+                UPDATE tweets
+                SET tweet_text = %s, sentiment_real = %s, sentiment_prediction = %s, confidence = %s
+                WHERE id_tweet = %s
+            """
+            cursor.execute(sql_update, (input_data.tweet, input_data.sentiment, pred, conf, row_id))
+            connection.commit()
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error al actualizar el tweet en la base de datos MySQL: {str(e)}")
+    finally:
+        connection.close()
+
+    # Determinar si es correcto
+    is_correct = False
+    actual = input_data.sentiment
+    if actual.upper() == pred.upper():
+        is_correct = True
+    elif actual.lower() == "positive" and pred == "POSITIVE":
+        is_correct = True
+    elif actual.lower() == "negative" and pred == "NEGATIVE":
+        is_correct = True
+
+    return {
+        "status": "success",
+        "record": {
+            "id": row_id,
+            "entity": entity,
+            "sentiment": input_data.sentiment,
+            "tweet": input_data.tweet,
+            "prediction": pred,
+            "confidence": conf,
+            "correct": is_correct,
+            "latency_ms": round(latency, 2)
+        }
+    }
 
 # 7. Eliminar un tweet existente (Autenticado)
 @app.delete("/api/validation-results/{row_id}")
 def delete_validation_sample(row_id: int, user_info: dict = Depends(verify_authentication)):
-    global validation_records
-    for idx, r in enumerate(validation_records):
-        if r['id'] == row_id:
-            validation_records.pop(idx)
-            return {"status": "success"}
-    raise HTTPException(status_code=404, detail="Registro de tweet no encontrado.")
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id_tweet FROM tweets WHERE id_tweet = %s", (row_id,))
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Registro de tweet no encontrado.")
+            
+            cursor.execute("DELETE FROM tweets WHERE id_tweet = %s", (row_id,))
+            connection.commit()
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error al eliminar el tweet de la base de datos MySQL: {str(e)}")
+    finally:
+        connection.close()
+    return {"status": "success"}
 
 # 8. Re-ejecutar inferencia global (Autenticado)
 @app.post("/api/validation-results/re-run")
 def rerun_validation(user_info: dict = Depends(verify_authentication)):
-    run_records_inference()
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id_tweet, tweet_text FROM tweets")
+            rows = cursor.fetchall()
+            
+            for row in rows:
+                res = clasificador(row['tweet_text'][:512])[0]
+                pred = res['label']
+                conf = round(res['score'], 4)
+                
+                cursor.execute(
+                    "UPDATE tweets SET sentiment_prediction = %s, confidence = %s WHERE id_tweet = %s",
+                    (pred, conf, row['id_tweet'])
+                )
+            connection.commit()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error en la re-ejecución de inferencia sobre MySQL: {str(e)}")
+    finally:
+        connection.close()
+        
     return get_validation_results(user_info=user_info)
 
 # 9. Endpoint de distribución de dataset con Matplotlib (Autenticado)
 @app.get("/api/charts/distribution")
 def get_distribution_chart(user_info: dict = Depends(verify_authentication)):
-    global validation_records
-    if not validation_records:
-        initialize_dataset()
+    records = get_all_records_for_charts()
     
     with matplotlib_lock:
         try:
-            original_labels = [r['sentiment'] for r in validation_records]
-            predicted_labels = [r['prediction'] for r in validation_records]
+            original_labels = [r['sentiment'] for r in records]
+            predicted_labels = [r['prediction'] for r in records]
             
             sns.set_theme(style="darkgrid")
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.5))
@@ -376,14 +478,12 @@ def get_distribution_chart(user_info: dict = Depends(verify_authentication)):
 # 10. Endpoint de matriz de confusión (heatmaps) de sentimientos (Autenticado)
 @app.get("/api/charts/confusion-matrix")
 def get_confusion_matrix_chart(user_info: dict = Depends(verify_authentication)):
-    global validation_records
-    if not validation_records:
-        initialize_dataset()
+    records = get_all_records_for_charts()
         
     with matplotlib_lock:
         try:
-            actual = [r['sentiment'] for r in validation_records]
-            predicted = [r['prediction'] for r in validation_records]
+            actual = [r['sentiment'] for r in records]
+            predicted = [r['prediction'] for r in records]
             
             df = pd.DataFrame({"Actual": actual, "Predicted": predicted})
             cross_tab = pd.crosstab(df["Actual"], df["Predicted"])
@@ -414,15 +514,13 @@ def get_confusion_matrix_chart(user_info: dict = Depends(verify_authentication))
 # 11. Endpoint de gráfico de correlación de Confianza vs Latencia (Autenticado)
 @app.get("/api/charts/correlation")
 def get_correlation_chart(user_info: dict = Depends(verify_authentication)):
-    global validation_records
-    if not validation_records:
-        initialize_dataset()
+    records = get_all_records_for_charts()
         
     with matplotlib_lock:
         try:
-            confidences = [r['confidence'] for r in validation_records]
-            latencies = [r['latency_ms'] for r in validation_records]
-            correctness = ["Correct" if r['correct'] else "Incorrect" for r in validation_records]
+            confidences = [r['confidence'] for r in records]
+            latencies = [r['latency_ms'] for r in records]
+            correctness = ["Correct" if r['correct'] else "Incorrect" for r in records]
             
             df = pd.DataFrame({
                 "Confidence": confidences,
@@ -475,6 +573,61 @@ def get_correlation_chart(user_info: dict = Depends(verify_authentication)):
             plt.close()
             print("Error generating correlation chart:", e)
             raise HTTPException(status_code=500, detail=f"Error generating correlation chart: {str(e)}")
+
+# --- RUTAS REQUERIDAS POR EL BACKEND DE LA TAREA (COMPATIBILIDAD) ---
+class PredictRequest(BaseModel):
+    id_tweet: int
+
+@app.get("/tweets")
+def obtener_tweets():
+    """Retorna los primeros 20 tweets almacenados en la base de datos para visualizarlos en el Front de la tarea."""
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction FROM tweets LIMIT 20")
+            resultado = cursor.fetchall()
+            return resultado
+    finally:
+        connection.close()
+
+@app.post("/predict-db")
+def analizar_y_guardar_tweet(request: PredictRequest):
+    """Obtiene un tweet específico por ID de MySQL, lo analiza con el LLM local y guarda la predicción en la BD."""
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            # 1. Buscar el tweet en MySQL
+            cursor.execute("SELECT tweet_text FROM tweets WHERE id_tweet = %s", (request.id_tweet,))
+            row = cursor.fetchone()
+            
+            if not row:
+                raise HTTPException(status_code=404, detail="Tweet no encontrado en la base de datos.")
+            
+            texto = row['tweet_text']
+            
+            # 2. Inferencia local con el modelo
+            prediction = clasificador(texto[:512])[0]
+            label_pred = prediction['label']
+            confidence_pred = round(prediction['score'], 4)
+            
+            # 3. Persistir el resultado en la base de datos
+            sql_update = """
+                UPDATE tweets 
+                SET sentiment_prediction = %s, confidence = %s 
+                WHERE id_tweet = %s
+            """
+            cursor.execute(sql_update, (label_pred, confidence_pred, request.id_tweet))
+            connection.commit()
+            
+            return {
+                "id_tweet": request.id_tweet,
+                "text": texto,
+                "sentiment_llm": label_pred,
+                "confidence": confidence_pred,
+                "status": "Actualizado en Base de Datos"
+            }
+    finally:
+        connection.close()
 
 if __name__ == "__main__":
     import uvicorn
