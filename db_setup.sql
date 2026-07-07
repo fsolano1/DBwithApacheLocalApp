@@ -7,5 +7,6 @@ CREATE TABLE IF NOT EXISTS tweets (
     sentiment_real VARCHAR(50),
     tweet_text TEXT,
     sentiment_prediction VARCHAR(50) DEFAULT NULL,
-    confidence FLOAT DEFAULT NULL
+    confidence FLOAT DEFAULT NULL,
+    latency_ms FLOAT DEFAULT NULL
 );

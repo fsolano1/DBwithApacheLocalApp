@@ -8,19 +8,34 @@ from fastapi.responses import HTMLResponse
 app = FastAPI(title="API de Análisis de Sentimientos con MySQL")
 
 # Configuración de conexión a MySQL (con soporte para variables de entorno y valores por defecto)
+DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_USER = os.environ.get("DB_USER", "root")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
+DB_NAME = os.environ.get("DB_NAME", "db_sentimientos")
+
 def get_db_connection():
-    db_host = os.environ.get("DB_HOST", "localhost")
-    db_user = os.environ.get("DB_USER", "root")
-    db_password = os.environ.get("DB_PASSWORD", "password")
-    db_name = os.environ.get("DB_NAME", "db_sentimientos")
-    
-    return pymysql.connect(
-        host=db_host,
-        user=db_user,
-        password=db_password,
-        database=db_name,
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    try:
+        if DB_PASSWORD:
+            return pymysql.connect(
+                host=DB_HOST,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME,
+                cursorclass=pymysql.cursors.DictCursor
+            )
+        else:
+            return pymysql.connect(
+                host=DB_HOST,
+                user=DB_USER,
+                database=DB_NAME,
+                cursorclass=pymysql.cursors.DictCursor
+            )
+    except Exception as e:
+        print("Database connection error in main.py:", e)
+        raise HTTPException(
+            status_code=503,
+            detail="conexión no válida, revisa tu conexión a tu db"
+        )
 
 # Carga del modelo global en memoria
 print("Cargando modelo local de análisis de sentimientos para main.py...")
@@ -117,23 +132,46 @@ def frontend():
 
             <script>
                 async function cargarTweets() {
-                    const response = await fetch('/tweets');
-                    const tweets = await response.json();
-                    const tbody = document.getElementById('tabla-tweets');
-                    tbody.innerHTML = '';
-                    
-                    tweets.forEach(t => {
-                        tbody.innerHTML += `
-                            <tr>
-                                <td>${t.id_tweet}</td>
-                                <td>${t.entity}</td>
-                                <td><strong>${t.sentiment_real}</strong></td>
-                                <td>${t.tweet_text}</td>
-                                <td id="pred-${t.id_tweet}">${t.sentiment_prediction ? t.sentiment_prediction : '<i>Sin procesar</i>'}</td>
-                                <td><button onclick="procesarTweet(${t.id_tweet})">Analizar con LLM</button></td>
-                            </tr>
-                        `;
-                    });
+                    try {
+                        const response = await fetch('/tweets');
+                        if (!response.ok) {
+                            let errMsg = `HTTP ${response.status}`;
+                            try {
+                                const errData = await response.json();
+                                if (errData && errData.detail) {
+                                    errMsg = errData.detail;
+                                }
+                            } catch (_) {}
+                            throw new Error(errMsg);
+                        }
+                        const tweets = await response.json();
+                        const tbody = document.getElementById('tabla-tweets');
+                        tbody.innerHTML = '';
+                        
+                        tweets.forEach(t => {
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>${t.id_tweet}</td>
+                                    <td>${t.entity}</td>
+                                    <td><strong>${t.sentiment_real}</strong></td>
+                                    <td>${t.tweet_text}</td>
+                                    <td id="pred-${t.id_tweet}">${t.sentiment_prediction ? t.sentiment_prediction : '<i>Sin procesar</i>'}</td>
+                                    <td><button onclick="procesarTweet(${t.id_tweet})">Analizar con LLM</button></td>
+                                </tr>
+                            `;
+                        });
+                    } catch (err) {
+                        const tbody = document.getElementById('tabla-tweets');
+                        if (tbody) {
+                            tbody.innerHTML = `
+                                <tr>
+                                    <td colspan="6" style="padding: 20px; text-align: center; color: red; font-weight: bold; background-color: #ffe6e6; border: 1px solid red; border-radius: 4px;">
+                                        conexión no válida, revisa tu conexión a tu db
+                                    </td>
+                                </tr>
+                            `;
+                        }
+                    }
                 }
 
                 async function procesarTweet(id) {

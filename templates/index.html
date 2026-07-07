@@ -256,6 +256,12 @@ print(resp.json())
             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
             New Project
         </button>
+        <div class="mt-3">
+            <label class="block text-[10px] font-label-caps text-on-surface-variant/70 mb-1">SELECT ACTIVE PROJECT</label>
+            <select id="projectSelectorMobile" onchange="switchActiveProject(this.value)" class="w-full bg-surface-container-low border border-outline-variant/60 rounded py-1 px-2 text-on-surface focus:outline-none focus:border-primary text-xs font-semibold cursor-pointer">
+                <!-- Dynamically populated -->
+            </select>
+        </div>
     </div>
     <ul class="flex-1 space-y-1">
         <li>
@@ -322,6 +328,12 @@ print(resp.json())
             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
             New Project
         </button>
+        <div class="mt-3">
+            <label class="block text-[10px] font-label-caps text-on-surface-variant/70 mb-1">SELECT ACTIVE PROJECT</label>
+            <select id="projectSelectorDesktop" onchange="switchActiveProject(this.value)" class="w-full bg-surface-container-low border border-outline-variant/60 rounded py-1 px-2 text-on-surface focus:outline-none focus:border-primary text-xs font-semibold cursor-pointer">
+                <!-- Dynamically populated -->
+            </select>
+        </div>
     </div>
     <ul class="flex-1 space-y-1">
         <li>
@@ -463,6 +475,16 @@ print(resp.json())
                         <span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
                         LOCAL ENGINE
                     </span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="flex items-center gap-1.5 text-xs font-label-caps text-label-caps text-on-surface-variant px-3 py-1 border border-outline-variant rounded bg-surface-container-low">
+                            <span class="db-status-dot w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                            <span class="db-status-text text-primary font-semibold">DATABASE ONLINE</span>
+                        </span>
+                        <button id="dbRetryBtnOverview" onclick="retryDbConnection()" class="db-retry-btn hidden py-1 px-2.5 bg-error/20 hover:bg-error/30 text-error border border-error/30 hover:border-error text-xs font-bold rounded flex items-center gap-1.5 transition-all active:scale-95 duration-150">
+                            <span class="material-symbols-outlined text-[14px]">autorenew</span>
+                            <span>Retry Connection</span>
+                        </button>
+                    </div>
                     <select id="chartTimeRange" class="bg-surface-container border border-outline-variant text-on-surface font-body-md text-body-md rounded px-3 py-1 focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer">
                         <option value="10">Last 10 Records</option>
                         <option value="20">Last 20 Records</option>
@@ -640,6 +662,16 @@ print(resp.json())
                         <p class="text-on-surface-variant mt-1">Validate sentiment predictions against the Twitter Validation Dataset.</p>
                     </div>
                     <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-1.5">
+                            <span class="flex items-center gap-1.5 text-xs font-label-caps text-label-caps text-on-surface-variant px-3 py-1 border border-outline-variant rounded bg-surface-container-low">
+                                <span class="db-status-dot w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                                <span class="db-status-text text-primary font-semibold">DATABASE ONLINE</span>
+                            </span>
+                            <button id="dbRetryBtnValidation" onclick="retryDbConnection()" class="db-retry-btn hidden py-1 px-2.5 bg-error/20 hover:bg-error/30 text-error border border-error/30 hover:border-error text-xs font-bold rounded flex items-center gap-1.5 transition-all active:scale-95 duration-150">
+                                <span class="material-symbols-outlined text-[14px]">autorenew</span>
+                                <span>Retry Connection</span>
+                            </button>
+                        </div>
                         <div class="flex items-center gap-1.5 bg-surface-container-low border border-outline-variant rounded px-2.5 py-1 text-xs">
                             <span class="text-on-surface-variant font-label-caps font-bold">Dataset Limit:</span>
                             <select id="validationLimitSelect" class="bg-surface-container border-none text-on-surface text-xs rounded py-0.5 px-2 focus:ring-1 focus:ring-primary outline-none cursor-pointer">
@@ -649,6 +681,10 @@ print(resp.json())
                                 <option value="100">100 Records</option>
                                 <option value="all">Entire DB</option>
                             </select>
+                            <span id="limitWarningBadge" class="hidden flex items-center gap-1 text-[10px] font-bold text-error border border-error/30 bg-error/10 px-1.5 py-0.5 rounded ml-1.5 animate-pulse">
+                                <span class="material-symbols-outlined text-[12px]">warning</span>
+                                <span id="limitWarningText">Only 74 available</span>
+                            </span>
                         </div>
                         <span class="flex items-center gap-1.5 text-xs font-label-caps text-label-caps text-on-surface-variant px-3 py-1.5 border border-outline-variant rounded bg-surface-container-low">
                             <span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
@@ -785,7 +821,18 @@ print(resp.json())
                     <!-- 2. Dataset Viewer Table -->
                     <div id="val-content-table" class="val-tab-content hidden bg-surface-container border border-outline-variant rounded-lg p-stack-md space-y-4">
                         <div class="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Dataset Sample Log</h3>
+                            <div class="flex items-center gap-3">
+                                <h3 class="font-headline-sm text-headline-sm text-on-surface">Dataset Sample Log</h3>
+                                <span id="valRecordCountBadge" class="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full bg-primary/15 text-primary text-xs font-bold border border-primary/30">…</span>
+                                <span id="tableLimitWarningBadge" class="hidden flex items-center gap-1 text-xs font-bold text-error border border-error/30 bg-error/10 px-2 py-1 rounded animate-pulse">
+                                    <span class="material-symbols-outlined text-[14px]">warning</span>
+                                    <span id="tableLimitWarningText">Requested 100, but only 74 available in database</span>
+                                </span>
+                                <button id="valRefreshBtn" onclick="loadValidationResults(true)" title="Reload with current limit" class="flex items-center gap-1 text-xs text-on-surface-variant hover:text-primary border border-outline-variant hover:border-primary rounded px-2 py-1 transition-colors">
+                                    <span class="material-symbols-outlined" style="font-size:14px">refresh</span>
+                                    Reload
+                                </button>
+                            </div>
                             <div class="flex gap-2 w-full sm:w-auto">
                                 <input id="valTableSearch" type="text" placeholder="Search tweets..." class="bg-surface-container-low border border-outline-variant text-on-surface font-body-md text-xs rounded px-3 py-1.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none flex-1 sm:w-48"/>
                                 <select id="valTableFilter" class="bg-surface-container-low border border-outline-variant text-on-surface font-body-md text-xs rounded px-3 py-1.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer">

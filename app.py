@@ -2,6 +2,7 @@ import os
 import time
 import base64
 import json
+import random
 from datetime import datetime
 import pandas as pd
 from fastapi import FastAPI, Request, Depends, Header, HTTPException
@@ -83,19 +84,47 @@ def verify_authentication(authorization: str = Header(None)):
     return user_info
 
 # --- GESTIÓN DE LA BASE DE DATOS Y CONEXIÓN A MYSQL ---
+DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_USER = os.environ.get("DB_USER", "root")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
+DB_NAME = os.environ.get("DB_NAME", "db_sentimientos")
+
 def get_db_connection():
-    db_host = os.environ.get("DB_HOST", "localhost")
-    db_user = os.environ.get("DB_USER", "root")
-    db_password = os.environ.get("DB_PASSWORD", "password")
-    db_name = os.environ.get("DB_NAME", "db_sentimientos")
-    
-    return pymysql.connect(
-        host=db_host,
-        user=db_user,
-        password=db_password,
-        database=db_name,
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    try:
+        if DB_PASSWORD:
+            return pymysql.connect(
+                host=DB_HOST,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME,
+                cursorclass=pymysql.cursors.DictCursor
+            )
+        else:
+            return pymysql.connect(
+                host=DB_HOST,
+                user=DB_USER,
+                database=DB_NAME,
+                cursorclass=pymysql.cursors.DictCursor
+            )
+    except Exception as e:
+        print("Database connection error:", e)
+        raise HTTPException(
+            status_code=503,
+            detail="conexión no válida, revisa tu conexión a tu db"
+        )
+
+@app.get("/api/db-status")
+def get_db_status():
+    """Verifica si la base de datos MySQL está en línea de forma pública."""
+    try:
+        connection = get_db_connection()
+        connection.close()
+        return {"status": "connected"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail="conexión no válida, revisa tu conexión a tu db"
+        )
 
 def get_all_records_for_charts():
     connection = get_db_connection()
@@ -193,15 +222,19 @@ def get_validation_results(limit: str = None, user_info: dict = Depends(verify_a
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
+            # Consultar total de registros en la base de datos
+            cursor.execute("SELECT COUNT(*) as total FROM tweets")
+            total_db_records = cursor.fetchone()['total']
+
             # Consultar con o sin límite
             if limit and limit != "all":
                 try:
                     val_limit = int(limit)
-                    cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence FROM tweets LIMIT %s", (val_limit,))
+                    cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence FROM tweets ORDER BY RAND() LIMIT %s", (val_limit,))
                 except ValueError:
-                    cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence FROM tweets LIMIT 20")
+                    cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence FROM tweets ORDER BY RAND() LIMIT 20")
             else:
-                cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence FROM tweets")
+                cursor.execute("SELECT id_tweet, entity, sentiment_real, tweet_text, sentiment_prediction, confidence FROM tweets ORDER BY RAND()")
             
             rows = cursor.fetchall()
     except Exception as e:
@@ -238,7 +271,7 @@ def get_validation_results(limit: str = None, user_info: dict = Depends(verify_a
             "prediction": pred,
             "confidence": conf,
             "correct": is_correct,
-            "latency_ms": 45.0 if pred != "N/A" else 0.0  # Latencia mockeada para visualización
+            "latency_ms": round(random.uniform(35.0, 65.0), 1) if pred != "N/A" else 0.0  # Latencia mockeada para visualización
         })
         
     total_samples = len(records)
@@ -267,7 +300,8 @@ def get_validation_results(limit: str = None, user_info: dict = Depends(verify_a
             "correct_count": correct_count,
             "accuracy": accuracy,
             "avg_confidence": avg_confidence,
-            "avg_latency_ms": avg_latency
+            "avg_latency_ms": avg_latency,
+            "total_db_records": total_db_records
         },
         "distributions": {
             "original": original_dist,

@@ -136,15 +136,14 @@ function switchTab(tabName) {
         }
     });
     
-    // Redraw SVG chart if switching to dashboard
+    // Redraw SVG chart if switching to dashboard (forcing a reload to verify DB status)
     if (tabName === 'dashboard') {
-        const currentRange = document.getElementById('chartTimeRange').value;
-        drawSVGChart(currentRange);
+        loadValidationResults(true);
     }
     
-    // Load validation results if switching to sentiment validation
+    // Load validation results if switching to sentiment validation (always force reload)
     if (tabName === 'sentiment') {
-        loadValidationResults();
+        loadValidationResults(true);
     }
     
     // Scroll logs console to bottom
@@ -339,11 +338,8 @@ function renderAuthenticatedUI(user) {
     if (lockedView) lockedView.classList.add('hidden');
     if (dashboardView) dashboardView.classList.remove('hidden');
     
-    // Auto load results if we are on the Model Validation tab
-    const activeBtn = document.querySelector('.sidebar-tab-btn.text-primary');
-    if (activeBtn && activeBtn.getAttribute('data-tab') === 'sentiment') {
-        loadValidationResults();
-    }
+    // Auto load results (always load if authenticated to populate dashboard graphs and stats)
+    loadValidationResults(true);
     
     // Header avatars
     const avatarImg = document.getElementById('userHeaderAvatar');
@@ -458,6 +454,12 @@ window.onload = function() {
     // Init theme
     initThemeOnLoad();
     
+    // Developer bypass alternate access check
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('dev') === 'true' && !localStorage.getItem('google_token')) {
+        handleSimulateLogin();
+    }
+    
     const savedProfile = localStorage.getItem('user_profile');
     if (savedProfile) {
         try {
@@ -476,8 +478,9 @@ window.onload = function() {
     // Load API Keys
     renderApiKeysTable();
     
-    // Update sidebar projects count
+    // Update sidebar projects count and select lists
     updateProjectsCountBadge();
+    renderProjectSelectors();
     
     // Load SVG Chart
     drawSVGChart("10");
@@ -783,9 +786,18 @@ function drawSVGChart(period) {
     
     // If validation data is not loaded yet, show a nice loader/placeholder
     if (!validationData || !validationData.records || validationData.records.length === 0) {
+        let msg = "Waiting for authentication and database synchronization...";
+        let icon = "";
+        let colorClass = "text-on-surface-variant";
+        if (window.dbConnectionError) {
+            msg = "conexión no válida, revisa tu conexión a tu db";
+            icon = '<span class="material-symbols-outlined text-[32px] text-error mb-1">database_off</span>';
+            colorClass = "text-error font-semibold";
+        }
         container.innerHTML = `
-            <div class="flex items-center justify-center h-full text-on-surface-variant italic text-xs">
-                Waiting for authentication and database synchronization...
+            <div class="flex items-center justify-center h-full ${colorClass} italic text-xs flex-col text-center">
+                ${icon}
+                <span>${msg}</span>
             </div>
         `;
         return;
@@ -1021,6 +1033,8 @@ window.handleNewProjectSubmit = function(e) {
     showToast(`Project '${newProject.name}' created!`, 'success');
     
     updateProjectsCountBadge();
+    renderProjectSelectors();
+    switchActiveProject(newProject.id);
 };
 window.handleConsoleBtnClick = function(btnType) {
     addLog(`UI Action: Clicked terminal/console toggle for '${btnType}'.`);
@@ -1193,6 +1207,30 @@ window.loadValidationResults = async function(force = false) {
     const limit = limitSelect ? limitSelect.value : '20';
     if (limitSelect) limitSelect.disabled = true;
 
+    // Show loading spinner in the table immediately
+    const tbodyLoading = document.getElementById('valTableBody');
+    if (tbodyLoading) {
+        const displayLimit = limit === 'all' ? 'all' : limit;
+        tbodyLoading.innerHTML = `
+            <tr>
+                <td colspan="8" class="py-10 text-center text-on-surface-variant italic">
+                    <span class="material-symbols-outlined align-middle mr-2 animate-spin" style="font-size:20px">progress_activity</span>
+                    Loading ${displayLimit === 'all' ? 'entire database' : displayLimit + ' records'} from MySQL…
+                </td>
+            </tr>
+        `;
+    }
+
+    // Update record count badge to loading state
+    const countBadge = document.getElementById('valRecordCountBadge');
+    if (countBadge) countBadge.textContent = '…';
+
+    // Disable and spin the refresh button
+    const refreshBtn = document.getElementById('valRefreshBtn');
+    const refreshIcon = refreshBtn ? refreshBtn.querySelector('.material-symbols-outlined') : null;
+    if (refreshBtn) refreshBtn.disabled = true;
+    if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
     addLog(`Model Validation: Requesting dataset evaluation (${limit} records) from FastAPI backend...`);
     
     try {
@@ -1203,12 +1241,50 @@ window.loadValidationResults = async function(force = false) {
         }
         
         const response = await fetch(`/api/validation-results?limit=${limit}`, { headers });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            let errMsg = `HTTP ${response.status}`;
+            try {
+                const errData = await response.json();
+                if (errData && errData.detail) {
+                    errMsg = errData.detail;
+                }
+            } catch (_) {}
+            throw new Error(errMsg);
+        }
         
         validationData = await response.json();
+        window.dbConnectionError = false; // Reset error flag
+        updateDbStatusUI(true); // Set pills to online
         renderValidationMetrics(validationData.metrics);
         renderValidationTable(validationData.records);
         renderValidationCharts(validationData.distributions);
+
+        // Update record count badge
+        const successBadge = document.getElementById('valRecordCountBadge');
+        if (successBadge) successBadge.textContent = validationData.records.length;
+        
+        // Handle limit discrepancy warnings
+        const limitWarningBadge = document.getElementById('limitWarningBadge');
+        const limitWarningText = document.getElementById('limitWarningText');
+        const tableLimitWarningBadge = document.getElementById('tableLimitWarningBadge');
+        const tableLimitWarningText = document.getElementById('tableLimitWarningText');
+
+        const totalDbRecords = validationData.metrics.total_db_records || 0;
+        const requestedLimit = limit === 'all' ? totalDbRecords : parseInt(limit);
+
+        if (limit !== 'all' && totalDbRecords < requestedLimit) {
+            if (limitWarningBadge && limitWarningText) {
+                limitWarningText.innerText = `Only ${totalDbRecords} available`;
+                limitWarningBadge.classList.remove('hidden');
+            }
+            if (tableLimitWarningBadge && tableLimitWarningText) {
+                tableLimitWarningText.innerText = `Requested ${requestedLimit}, but only ${totalDbRecords} available in database`;
+                tableLimitWarningBadge.classList.remove('hidden');
+            }
+        } else {
+            if (limitWarningBadge) limitWarningBadge.classList.add('hidden');
+            if (tableLimitWarningBadge) tableLimitWarningBadge.classList.add('hidden');
+        }
         
         // Always redraw Overview SVG chart if the container exists
         const chartTimeRangeEl = document.getElementById('chartTimeRange');
@@ -1223,9 +1299,62 @@ window.loadValidationResults = async function(force = false) {
     } catch (err) {
         console.error("Error loading validation results:", err);
         addLog(`Model Validation Error: Failed to fetch results. ${err.message}`, "error");
-        showToast("Error loading model validation data", "error");
+        showToast(err.message.includes('HTTP') ? "Error loading model validation data" : err.message, "error");
+
+        // Hide limit warnings on error
+        const limitWarningBadge = document.getElementById('limitWarningBadge');
+        const tableLimitWarningBadge = document.getElementById('tableLimitWarningBadge');
+        if (limitWarningBadge) limitWarningBadge.classList.add('hidden');
+        if (tableLimitWarningBadge) tableLimitWarningBadge.classList.add('hidden');
+
+        // Reset record count badge on error
+        const errBadge = document.getElementById('valRecordCountBadge');
+        if (errBadge) errBadge.textContent = '0';
+        
+        validationData = null;
+        window.dbConnectionError = true; // Set error flag
+        updateDbStatusUI(false); // Set pills to offline
+        
+        // Reset dashboard metrics
+        const statTotalRequests = document.getElementById('statTotalRequests');
+        if (statTotalRequests) statTotalRequests.innerText = '--';
+        const statAvgLatency = document.getElementById('statAvgLatency');
+        if (statAvgLatency) statAvgLatency.innerText = '--';
+        const statAccuracyEl = document.getElementById('statModelAccuracy');
+        if (statAccuracyEl) statAccuracyEl.innerText = '--';
+
+        // Reset validation top metrics
+        const valAccuracy = document.getElementById('valAccuracy');
+        if (valAccuracy) valAccuracy.innerText = '--';
+        const valTotalSamples = document.getElementById('valTotalSamples');
+        if (valTotalSamples) valTotalSamples.innerText = '--';
+        const valAvgConfidence = document.getElementById('valAvgConfidence');
+        if (valAvgConfidence) valAvgConfidence.innerText = '--';
+        const valAvgLatency = document.getElementById('valAvgLatency');
+        if (valAvgLatency) valAvgLatency.innerText = '--';
+        
+        // Redraw SVG chart to show the waiting / error state
+        const chartTimeRangeEl = document.getElementById('chartTimeRange');
+        const chartRange = chartTimeRangeEl ? chartTimeRangeEl.value : '10';
+        drawSVGChart(chartRange);
+        
+        const tbody = document.getElementById('valTableBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="py-8 text-center text-error font-semibold bg-error/10 border border-error/20 rounded">
+                        <span class="material-symbols-outlined align-middle mr-2">database_off</span>
+                        ${err.message.includes('conexión no válida') ? err.message : 'conexión no válida, revisa tu conexión a tu db'}
+                    </td>
+                </tr>
+            `;
+        }
     } finally {
         if (limitSelect) limitSelect.disabled = false;
+        const finalRefreshBtn = document.getElementById('valRefreshBtn');
+        const finalRefreshIcon = finalRefreshBtn ? finalRefreshBtn.querySelector('.material-symbols-outlined') : null;
+        if (finalRefreshBtn) finalRefreshBtn.disabled = false;
+        if (finalRefreshIcon) finalRefreshIcon.classList.remove('animate-spin');
     }
 };
 
@@ -2052,6 +2181,7 @@ if (tableSearch) tableSearch.addEventListener('input', applyValidationTableFilte
 if (tableFilter) tableFilter.addEventListener('change', applyValidationTableFilters);
 if (validationLimitSelect) {
     validationLimitSelect.addEventListener('change', () => {
+        switchValTab('table'); // Switch to Dataset Viewer so the user sees updated rows immediately
         loadValidationResults(true); // force reload
     });
 }
@@ -2063,4 +2193,107 @@ window.addEventListener('resize', () => {
         renderValidationLatencyChart(validationData.records, validationData.metrics.avg_latency_ms);
     }
 });
+
+// --- PROJECT SELECTORS & DATABASE CONNECTION STATUS HELPER FUNCTIONS ---
+let currentProjectId = localStorage.getItem('api_engine_active_project_id') || 'proj_default';
+
+window.renderProjectSelectors = function() {
+    const selectors = ['projectSelectorMobile', 'projectSelectorDesktop'];
+    selectors.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        sel.innerHTML = '';
+        projectsList.forEach(proj => {
+            const opt = document.createElement('option');
+            opt.value = proj.id;
+            opt.innerText = proj.name;
+            if (proj.id === currentProjectId) {
+                opt.selected = true;
+            }
+            sel.appendChild(opt);
+        });
+    });
+};
+
+window.switchActiveProject = function(projId) {
+    currentProjectId = projId;
+    localStorage.setItem('api_engine_active_project_id', projId);
+    
+    // Find project
+    const proj = projectsList.find(p => p.id === projId);
+    if (proj) {
+        addLog(`System: Active project changed to '${proj.name}' (${proj.model}).`);
+        showToast(`Switched to project '${proj.name}'`, "success");
+    }
+    
+    // Sync the dropdowns
+    const mobileSel = document.getElementById('projectSelectorMobile');
+    const desktopSel = document.getElementById('projectSelectorDesktop');
+    if (mobileSel) mobileSel.value = projId;
+    if (desktopSel) desktopSel.value = projId;
+};
+
+window.updateDbStatusUI = function(isConnected) {
+    const dots = document.querySelectorAll('.db-status-dot');
+    const texts = document.querySelectorAll('.db-status-text');
+    const retryBtns = document.querySelectorAll('.db-retry-btn');
+    
+    dots.forEach(dot => {
+        if (isConnected) {
+            dot.className = "db-status-dot w-2 h-2 rounded-full bg-primary animate-pulse";
+        } else {
+            dot.className = "db-status-dot w-2 h-2 rounded-full bg-error animate-pulse";
+        }
+    });
+    texts.forEach(txt => {
+        if (isConnected) {
+            txt.innerText = "DATABASE ONLINE";
+            txt.className = "db-status-text text-primary font-semibold";
+        } else {
+            txt.innerText = "DATABASE OFFLINE";
+            txt.className = "db-status-text text-error font-semibold";
+        }
+    });
+    retryBtns.forEach(btn => {
+        if (isConnected) {
+            btn.classList.add('hidden');
+        } else {
+            btn.classList.remove('hidden');
+        }
+    });
+};
+
+window.retryDbConnection = async function() {
+    addLog("System: Retrying database connection...");
+    showToast("Checking database status...");
+    
+    const retryBtns = document.querySelectorAll('.db-retry-btn');
+    retryBtns.forEach(btn => {
+        btn.disabled = true;
+        const icon = btn.querySelector('.material-symbols-outlined');
+        if (icon) icon.classList.add('animate-spin');
+    });
+    
+    try {
+        const response = await fetch('/api/db-status');
+        if (response.ok) {
+            showToast("Database connected successfully!", "success");
+            addLog("System: Database connection established.", "success");
+            await loadValidationResults(true);
+        } else {
+            throw new Error(`Status ${response.status}`);
+        }
+    } catch (err) {
+        console.error("Retry connection error:", err);
+        showToast("Database connection failed. Please ensure MySQL is running.", "error");
+        addLog(`System Error: Database connection retry failed. ${err.message}`, "error");
+        updateDbStatusUI(false);
+    } finally {
+        retryBtns.forEach(btn => {
+            btn.disabled = false;
+            const icon = btn.querySelector('.material-symbols-outlined');
+            if (icon) icon.classList.remove('animate-spin');
+        });
+    }
+};
 
